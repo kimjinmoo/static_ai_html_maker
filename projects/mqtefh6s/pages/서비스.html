@@ -1,0 +1,438 @@
+<!-- page: pages/services.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CycloPath - 모든 서비스 목록</title>
+    <!-- Google Fonts CDN -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Design Token Variables */
+        :root {
+            --color-primary: #2d3436;
+            --color-secondary: #d4a574;
+            --color-accent: #c9956b;
+            --color-background: #faf9f6;
+            --color-surface: #ffffff;
+            --color-text-primary: #2d3436;
+            --color-text-secondary: #636e72;
+            --color-border: #dfe6e9;
+            --color-muted: #b2bec3;
+
+            --font-heading: 'Playfair Display', Georgia, 'Times New Roman', serif;
+            --font-body: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* Global Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--color-background);
+            color: var(--color-text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        /* Typography Definitions */
+        h1 {
+            font-family: var(--font-heading);
+            font-size: 52px;
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -0.01em;
+            margin-bottom: 20px;
+        }
+        h2 {
+            font-family: var(--font-heading);
+            font-size: 38px;
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        h3 {
+            font-family: var(--font-heading);
+            font-size: 26px;
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: 15px;
+        }
+        h4 {
+            font-family: var(--font-heading);
+            font-size: 20px;
+            font-weight: 500;
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+        
+        .body-large {
+            font-size: 18px;
+            font-weight: 300;
+            line-height: 1.9;
+        }
+        .body-text {
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.8;
+        }
+        .body-small {
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.6;
+        }
+        .caption {
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1.5;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        /* Layout & Spacing */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 48px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 24px;
+            }
+        }
+        .section-padding {
+            padding: 100px 0;
+        }
+        .section-divider {
+            width: 48px;
+            height: 3px;
+            background-color: var(--color-secondary);
+            margin: 20px auto;
+        }
+
+        /* Components: Navigation (Consistent with main page) */
+        header {
+            height: 72px;
+            background-color: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 48px;
+            height: 100%;
+        }
+        .logo {
+            font-family: var(--font-heading);
+            font-size: 28px;
+            color: var(--color-primary);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+        .nav-links a {
+            color: var(--color-text-primary);
+            text-decoration: none;
+            margin-left: 30px;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            padding: 5px 0;
+        }
+        .nav-links a:hover {
+            color: var(--color-secondary);
+        }
+
+        /* Services Listing Style */
+        #services-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 36px; /* lg spacing */
+        }
+        .service-item {
+            background-color: var(--color-surface);
+            padding: 40px;
+            border-radius: 6px;
+            border: 1px solid var(--color-border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
+            transition: all 0.3s ease;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+        }
+        .service-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            border-color: var(--color-secondary);
+        }
+        .service-icon {
+            font-size: 48px;
+            color: var(--color-secondary);
+            margin-bottom: 20px;
+        }
+        .service-item h3 {
+            color: var(--color-primary);
+            margin-bottom: 10px;
+        }
+        .service-item p {
+            margin-bottom: 25px;
+            flex-grow: 1;
+        }
+        .service-detail {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+            margin-top: auto; /* Pushes button to the bottom */
+            padding-top: 15px;
+            border-top: 1px dashed var(--color-border);
+        }
+
+
+        /* Components: Buttons (Consistent) */
+        .btn {
+            padding: 12px 24px;
+            border: 2px solid transparent;
+            border-radius: 2px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-align: center;
+            letter-spacing: 0.05em;
+        }
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+        .btn-primary:hover {
+            background-color: #1d2327;
+            border-color: #1d2327;
+        }
+        .btn-accent {
+            background-color: var(--color-secondary);
+            color: white;
+            border-color: var(--color-secondary);
+        }
+        .btn-accent:hover {
+            background-color: var(--color-accent);
+            border-color: var(--color-accent);
+        }
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--color-primary);
+            border: 2px solid var(--color-primary);
+        }
+        .btn-secondary:hover {
+            background-color: var(--color-border);
+            border-color: var(--color-secondary);
+            color: var(--color-secondary);
+        }
+        
+        /* Footer (Consistent) */
+        footer {
+            background-color: var(--color-primary);
+            color: var(--color-background);
+            padding: 50px 0;
+            text-align: center;
+        }
+        .footer-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 48px;
+        }
+        .footer-links a {
+            color: var(--color-background);
+            text-decoration: none;
+            margin: 0 15px;
+            transition: color 0.3s;
+        }
+        .footer-links a:hover {
+            color: var(--color-secondary);
+        }
+        
+        /* Animation (Consistent) */
+        .fade-in-element {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+        .fade-in-element.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .fade-in-element[data-delay="0.1"] { transition-delay: 0.1s; }
+        .fade-in-element[data-delay="0.2"] { transition-delay: 0.2s; }
+        .fade-in-element[data-delay="0.3"] { transition-delay: 0.3s; }
+
+    </style>
+</head>
+<body class="fade-in-element">
+
+    <!-- Navigation Bar -->
+    <header>
+        <div class="navbar">
+            <div class="logo">Cyclo<span style="color: var(--color-secondary);">Path</span></div>
+            <nav class="nav-links">
+                <a href="services.html">서비스</a>
+                <a href="index.html">메인</a> <!-- Assuming index.html is the homepage -->
+                <a href="#">프리미엄</a>
+                <a href="#">후기</a>
+                <a href="#">예약</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero/Page Title Section -->
+        <section class="section-padding" style="padding-top: 140px; padding-bottom: 80px;">
+            <div class="container">
+                <div style="text-align: center;">
+                    <span class="caption" style="color: var(--color-text-secondary);">ALL OUR OFFERINGS</span>
+                    <h1 style="font-size: 64px;">당신의 모든 라이딩을 완성하는 서비스</h1>
+                    <p class="body-large" style="margin-top: 10px; max-width: 800px; margin-left: auto; margin-right: auto; color: var(--color-text-secondary);">
+                        가장 정교하게 설계된 자전거 라인업부터 전문적인 맞춤 서비스까지, CycloPath는 당신의 취향을 완벽하게 반영합니다.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Core Services List Section -->
+        <section id="services-list" class="section-padding" style="padding-top: 0; padding-bottom: 100px;">
+            <div class="container">
+                <div style="text-align: center; margin-bottom: 60px;">
+                    <span class="caption" style="color: var(--color-text-secondary);">DIVERSE RIDES</span>
+                    <h2 style="margin-top: 15px;">카테고리별 상세 서비스</h2>
+                    <div class="section-divider"></div>
+                </div>
+                
+                <div class="service-grid">
+                    <!-- Service Item 1: City Commuter -->
+                    <div class="service-item fade-in-element" data-delay="0.1">
+                        <div class="service-icon"><i class="fas fa-city"></i></div>
+                        <h3>도심형 컴포터블 바이크</h3>
+                        <p class="body-text">불필요한 요소는 덜어내고, 도시의 풍경을 편안하게 즐기는 데 집중했습니다. 장거리 이동에도 피로감이 적습니다.</p>
+                        <div class="service-detail">
+                            <p>최소 대여 시간: 4시간</p>
+                            <a href="#" class="btn btn-accent">자세히 보기</a>
+                        </div>
+                    </div>
+
+                    <!-- Service Item 2: Performance Road -->
+                    <div class="service-item fade-in-element" data-delay="0.2">
+                        <div class="service-icon"><i class="fas fa-flag-checkered"></i></div>
+                        <h3>하이퍼 퍼포먼스 로드</h3>
+                        <p class="body-text">가장 가벼운 카본 프레임과 최상급 구동계를 장착했습니다. 기록 단축을 목표로 하는 분들께 최적화되어 있습니다.</p>
+                        <div class="service-detail">
+                            <p>최소 대여 시간: 6시간</p>
+                            <a href="#" class="btn btn-accent">자세히 보기</a>
+                        </div>
+                    </div>
+
+                    <!-- Service Item 3: Off-Road Mountain -->
+                    <div class="service-item fade-in-element" data-delay="0.3">
+                        <div class="service-icon"><i class="fas fa-tree"></i></div>
+                        <h3>견고한 오프로드 MTB</h3>
+                        <p class="body-text">거친 지형과 비포장도로를 능숙하게 헤쳐나갈 수 있도록 설계되었습니다. 모험심 가득한 라이더를 위한 선택입니다.</p>
+                        <div class="service-detail">
+                            <p>최소 대여 시간: 8시간</p>
+                            <a href="#" class="btn btn-accent">자세히 보기</a>
+                        </div>
+                    </div>
+
+                    <!-- Service Item 4: E-Bike Premium -->
+                    <div class="service-item fade-in-element" data-delay="0.4">
+                        <div class="service-icon"><i class="fas fa-bolt"></i></div>
+                        <h3>프리미엄 전기 자전거</h3>
+                        <p class="body-text">체력 부담 없이 어디든 갈 수 있게 돕는 최첨단 전기 모터가 장착되었습니다. 경관 감상에 완벽한 동반자입니다.</p>
+                        <div class="service-detail">
+                            <p>최소 대여 시간: 12시간</p>
+                            <a href="#" class="btn btn-accent">자세히 보기</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Service Item 5: Custom Fitting -->
+                    <div class="service-item fade-in-element" data-delay="0.5">
+                        <div class="service-icon"><i class="fas fa-user-cog"></i></div>
+                        <h3>1:1 맞춤 핏팅 서비스</h3>
+                        <p class="body-text">전문 트레이너가 당신의 신체 치수를 분석하여 최고의 효율을 내는 안장 높이와 핸들바 위치를 정밀하게 조율합니다.</p>
+                        <div class="service-detail">
+                            <p>예약 필수 (별도 문의)</p>
+                            <a href="#" class="btn btn-accent">상담 예약</a>
+                        </div>
+                    </div>
+                    
+                     <!-- Service Item 6: Tour Package -->
+                    <div class="service-item fade-in-element" data-delay="0.6">
+                        <div class="service-icon"><i class="fas fa-map-signs"></i></div>
+                        <h3>프리미엄 투어 패키지</h3>
+                        <p class="body-text">자전거 대여부터 전문 가이드 동행, 최고급 장비 대여까지 모든 것을 포함한 맞춤형 라이딩 일정입니다.</p>
+                        <div class="service-detail">
+                            <p>기간: 1일 ~ 5일</p>
+                            <a href="#" class="btn btn-accent">패키지 보기</a>
+                        </div>
+                    </div>
+                </div>
+            </div >
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <p style="margin-bottom: 20px;">&copy; 2024 Cyclopath. Crafted for the Discerning Traveler. All Rights Reserved.</p>
+            <div class="footer-links">
+                <a href="#">개인정보처리방침</a>
+                <a href="#">서비스 약관</a>
+                <a href="#">문의하기</a>
+            </div>
+        </div >
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Intersection Observer for Fade-In Animation (Implementing Staggering)
+            const faders = document.querySelectorAll('.fade-in-element');
+
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.1 
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const element = entry.target;
+                        // Check if the element has a data-delay attribute
+                        const delay = parseFloat(element.dataset.delay) || 0;
+                        
+                        // Apply a timeout based on data-delay for staggered effect
+                        setTimeout(() => {
+                            element.classList.add('visible');
+                        }, delay * 1000); 
+
+                        observer.unobserve(element); // Stop observing once visible
+                    }
+                });
+            }, observerOptions);
+
+            faders.forEach(el => {
+                observer.observe(el);
+            });
+        });
+    </script>
+</body>
+</html>
+<!-- end-page -->
