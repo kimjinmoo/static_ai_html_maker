@@ -25,13 +25,19 @@ def _review_html(html_content):
         if not result:
             return html_content
         result = result.strip()
-        if result.startswith("```"):
-            lines = result.split("\n")
+        # Extract code block if present anywhere in the response
+        code_start = result.find("```")
+        if code_start != -1:
+            lines = result[code_start:].split("\n")
             if lines[0].startswith("```"):
                 lines = lines[1:]
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             result = "\n".join(lines).strip()
+        # Also check for <!DOCTYPE as fallback
+        di = result.find("<!DOCTYPE html>")
+        if di != -1:
+            result = result[di:].strip()
         if result and len(result) > 50:
             result = strip_thinking(result)
             result = result.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
