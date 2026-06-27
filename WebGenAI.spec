@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 import sys
 import os
+import site
 block_cipher = None
 
 # Build name from environment variable (default: WebGenAI)
@@ -17,7 +18,24 @@ datas = [
     ('app', 'app'),
 ]
 
-binaries = []
+# Collect llama_cpp DLLs
+import site
+site_packages = site.getsitepackages()[0]
+
+llama_cpp_lib = os.path.join(site_packages, 'llama_cpp', 'lib')
+if os.path.exists(llama_cpp_lib):
+    for f in os.listdir(llama_cpp_lib):
+        if f.endswith('.dll'):
+            binaries.append((os.path.join(llama_cpp_lib, f), 'llama_cpp/lib'))
+
+# Collect nvidia CUDA DLLs
+nvidia_base = os.path.join(site_packages, 'nvidia')
+if os.path.exists(nvidia_base):
+    for root, dirs, files in os.walk(nvidia_base):
+        for f in files:
+            if f.endswith('.dll'):
+                rel_path = os.path.relpath(root, site_packages)
+                binaries.append((os.path.join(root, f), rel_path))
 
 a = Analysis(
     ['run_desktop.py'],
