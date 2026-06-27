@@ -15,6 +15,22 @@ from app.utils import get_projects_dir
 project_bp = Blueprint("project", __name__)
 
 
+def _extract_assets(project_dir, html):
+    """Extract inline CSS/JS from HTML to separate files and update the HTML with links."""
+    css_match = re.findall(r'<style[^>]*>([\s\S]*?)</style>', html, re.IGNORECASE)
+    js_match = re.findall(r'<script[^>]*>([\s\S]*?)</script>', html, re.IGNORECASE)
+    if css_match:
+        css_dir = os.path.join(project_dir, "assets", "css")
+        os.makedirs(css_dir, exist_ok=True)
+        with open(os.path.join(css_dir, "style.css"), 'w', encoding='utf-8') as f:
+            f.write("\n".join(css_match))
+    if js_match:
+        js_dir = os.path.join(project_dir, "assets", "js")
+        os.makedirs(js_dir, exist_ok=True)
+        with open(os.path.join(js_dir, "main.js"), 'w', encoding='utf-8') as f:
+            f.write("\n".join(js_match))
+
+
 @project_bp.route("/api/projects/init", methods=["POST"])
 def init_project():
     data = request.json
@@ -345,6 +361,10 @@ def save_project_file(project_id):
     with open(abs_full, 'w', encoding='utf-8') as f:
         f.write(content)
     print(f"  [File] {abs_full}")
+
+    # Extract CSS/JS from index.html to external files
+    if filepath == "index.html":
+        _extract_assets(project_dir, content)
 
     if filepath.startswith("pages") and filepath.endswith(".html"):
         json_path = os.path.join(projects_dir, f"{project_id}.json")

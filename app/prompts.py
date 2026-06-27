@@ -91,6 +91,7 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 ## HTML 생성 규칙
 - `<!DOCTYPE html>`로 시작, `<head>` + `<body>` 모두 포함
 - **⚠️ 모든 CSS는 반드시 `<style>` 태그 안에 넣으세요. CSS 코드를 `<style>` 밖에 텍스트로 출력하면 화면에 그대로 보여서 페이지가 깨집니다.**
+- CSS는 `<style>` 태그 안에, JS는 `<script>` 태그 안에 포함하세요.
 - `* { margin: 0; padding: 0; box-sizing: border-box; }` 리셋 필수
 - Google Fonts `<link>`로 폰트 로드
 - Font Awesome CDN으로 아이콘 사용
