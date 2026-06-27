@@ -813,31 +813,13 @@ async function sendMessageDirect(message, assistantDiv) {
   });
   const sse = createSSEReader(res);
   let fullContent = "";
-  let fullReasoning = "";
   const uniqueId = "direct-" + Date.now();
 
   assistantDiv.innerHTML = `
-    <div class="reasoning-block-wrapper hidden" id="reasoning-wrapper-${uniqueId}">
-      <div class="reasoning-header collapsed" onclick="toggleReasoningBlock('reasoning-content-${uniqueId}')">🧠 생각 과정</div>
-      <div class="reasoning-content hidden" id="reasoning-content-${uniqueId}"></div>
-    </div>
     <div class="message-text-content" id="message-content-${uniqueId}">⏳ 생성 준비 중...</div>
   `;
 
   const textDiv = document.getElementById(`message-content-${uniqueId}`);
-  const reasoningWrapper = document.getElementById(`reasoning-wrapper-${uniqueId}`);
-  const reasoningDiv = document.getElementById(`reasoning-content-${uniqueId}`);
-
-  sse.on("reasoning", (t) => {
-    const rText = t.content || t.text || "";
-    if (rText) {
-      fullReasoning += rText;
-      if (state.reasoningEnabled) {
-        reasoningWrapper.classList.remove("hidden");
-        reasoningDiv.innerHTML = formatContent(fullReasoning);
-      }
-    }
-  });
 
   sse.on("content", (t) => {
     const cText = t.content || t.text || "";
