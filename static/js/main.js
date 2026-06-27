@@ -10,6 +10,7 @@ const state = {
   selectedDesignContent: "",
   chatHistory: [],
   isGenerating: false,
+  abortController: null,
   modelReady: false,
   generatedHtml: "",
   currentProjectId: null,
@@ -574,11 +575,14 @@ function updatePreview(html, isStreaming) {
 }
 
 function showGenerating(isEditing) {
+  state.abortController = new AbortController();
   if (el.previewGenerating) {
     el.previewGenerating.classList.remove("hidden");
     const title = el.previewGenerating.querySelector("h3");
     if (title) title.textContent = isEditing ? "\uc218\uc815 \uc911" : "\ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc911";
   }
+  const cancelBtn = document.getElementById("btn-cancel-generate");
+  if (cancelBtn) cancelBtn.classList.remove("hidden");
   if (el.generatingProgressList) el.generatingProgressList.innerHTML = "";
   if (el.generatingStatusText) el.generatingStatusText.textContent = isEditing ? "\uc218\uc815 \uc694\uccad\uc744 \ucc98\ub9ac \uc911\uc785\ub2c8\ub2e4..." : "AI\uac00 \ud398\uc774\uc9c0\ub97c \ub9cc\ub4e4\uace0 \uc788\uc2b5\ub2c8\ub2e4...";
   if (el.previewFrame) el.previewFrame.classList.add("hidden");
@@ -586,9 +590,25 @@ function showGenerating(isEditing) {
 }
 
 function hideGenerating(isFinal) {
+  state.abortController = null;
   if (el.previewGenerating) el.previewGenerating.classList.add("hidden");
+  const cancelBtn = document.getElementById("btn-cancel-generate");
+  if (cancelBtn) cancelBtn.classList.add("hidden");
   if (isFinal !== false) updateProgressBar(100);
 }
+
+window.cancelGeneration = function () {
+  if (state.abortController) {
+    state.abortController.abort();
+    state.abortController = null;
+  }
+  state.isGenerating = false;
+  state.pendingElementAction = false;
+  el.sendBtn.disabled = false;
+  el.typingIndicator.classList.add("hidden");
+  hideGenerating();
+  addMessage("messages", "assistant", "\u26a0\ufe0f \uc791\uc5c5\uc774 \ucde8\uc18c\ub418\uc5c8\uc2b5\ub2c8\ub2e4.");
+};
 
 function updateProgressBar(pct) {
   const clamped = Math.min(95, Math.max(0, pct));
@@ -757,6 +777,7 @@ async function sendMessageDirect(message, assistantDiv) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: state.abortController?.signal,
   });
   const sse = createSSEReader(res);
   let fullContent = "";
@@ -804,6 +825,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   const res = await fetch("/api/chat/stream/modular", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal: state.abortController?.signal,
     body: JSON.stringify({
       message,
       page_type: state.selectedType,
@@ -1641,7 +1663,7 @@ function renderTreeNode(node, depth) {
     const active = node.path === state.currentViewPath ? " active" : "";
     const pending = node.pending ? " pending" : "";
     const icon = node.path.endsWith(".html") ? "\ud83c\udf10" : node.ext === ".css" ? "\ud83c\udfa8" : node.ext === ".js" ? "\ud83d\udce6" : "\ud83d\udcc4";
-    const delBtn = node.pending ? "" : `<span class="tree-del" onclick="event.stopPropagation();deleteFile('${node.path}')" title="삭제">&times;</span>`;
+    const delBtn = node.pending || state.isGenerating ? "" : `<span class="tree-del" onclick="event.stopPropagation();deleteFile('${node.path}')" title="삭제">&times;</span>`;
     return `<div class="tree-item file${active}${pending}" style="padding-left: ${depth * 16 + 8}px;" onclick="loadFileInPreview('${node.path}')"><span class="tree-icon">${icon}</span><span class="tree-name">${node.name}</span>${node.pending ? '<span class="tree-badge pending">\uc0dd\uc131 \uc911</span>' : ""}${delBtn}</div>`;
   }
 }
