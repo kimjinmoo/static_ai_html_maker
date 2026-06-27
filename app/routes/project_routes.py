@@ -9,7 +9,7 @@ import zipfile
 import re
 from flask import Blueprint, request, jsonify, send_file
 
-from app.utils import get_projects_dir
+from app.utils import get_projects_dir, ensure_complete_html
 
 
 project_bp = Blueprint("project", __name__)
@@ -149,6 +149,8 @@ def save_project():
     projects_dir = get_projects_dir()
     os.makedirs(projects_dir, exist_ok=True)
     print(f"\n[Save] \ud504\ub85c\uc81d\ud2b8 \uc800\uc7a5: {project_id} ({title})")
+
+    html = ensure_complete_html(html)
 
     html_path = os.path.join(projects_dir, f"{project_id}.html")
     with open(html_path, 'w', encoding='utf-8') as f:
@@ -365,6 +367,8 @@ def save_project_file(project_id):
         return jsonify({"error": "\ud5c8\uc6a9\ub418\uc9c0 \uc54a\uc740 \ud30c\uc77c \uacbd\ub85c\uc785\ub2c8\ub2e4."}), 403
 
     os.makedirs(os.path.dirname(abs_full), exist_ok=True)
+    if filepath.endswith('.html'):
+        content = ensure_complete_html(content)
     with open(abs_full, 'w', encoding='utf-8') as f:
         f.write(content)
     print(f"  [File] {abs_full}")
@@ -413,6 +417,7 @@ def save_multipage_project(project_id):
 
     saved_files = []
     for file_path, html in pages.items():
+        html = ensure_complete_html(html)
         full_path = os.path.join(project_dir, file_path)
         abs_full = os.path.abspath(full_path)
         abs_proj = os.path.abspath(project_dir)

@@ -33,5 +33,5 @@ CHAT_SAMPLING = {
     "top_p": 0.95,
     "top_k": 20,
     "min_p": 0.0,
-    "max_tokens": 4096,
+    "max_tokens": 8192,
 }

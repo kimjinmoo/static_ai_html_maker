@@ -4,7 +4,7 @@ import time
 
 from app.model import llama_chat
 from app.utils import strip_thinking
-from app.prompts import INTENT_CLASSIFY_PROMPT, STRATEGY_PROMPT
+from app.prompts import STRATEGY_PROMPT
 
 
 NEW_PAGE_KEYWORDS = [
@@ -84,48 +84,6 @@ NEW_PAGE_KEYWORDS = [
     "\ud398\uc774\uc9c0\uac00 \uc0dd\uc131", "\ud398\uc774\uc9c0 \uc0dd\uc131\ub418",
     "\ud398\uc774\uc9c0 \uc0dd\uaca8",
 ]
-
-
-def classify_intent(message, history, has_html, has_element):
-    if not message:
-        return "chat", "\ube48 \uba54\uc2dc\uc9c0"
-    if has_element:
-        return "edit", "\uc694\uc18c\uac00 \uc120\ud0dd\ub428"
-    if not has_html:
-        return "edit", "\uccab \ud398\uc774\uc9c0 \uc0dd\uc131"
-
-    msg_lower = message.lower()
-    if has_html and any(k in msg_lower for k in NEW_PAGE_KEYWORDS):
-        return "new_page", "\ud398\uc774\uc9c0 \uc0dd\uc131 \ud0a4\uc6cc\ub4dc \uac10\uc9c0"
-
-    messages = [
-        {"role": "system", "content": INTENT_CLASSIFY_PROMPT},
-    ]
-    if history:
-        messages.extend(history[-4:])
-    messages.append({
-        "role": "user",
-        "content": f"\ub2e4\uc74c \uba54\uc2dc\uc9c0\uc758 \uc758\ub3c4\ub97c \ud310\ub2e8\ud558\uc138\uc694:\n\n{message}"
-    })
-
-    try:
-        classify_start = time.time()
-        result = llama_chat(messages)
-        classify_time = time.time() - classify_start
-        print(f"  [Classify] {message[:50]} => {result[:200]} ({classify_time:.1f}s)", flush=True)
-
-        json_match = re.search(r'\{[^{}]+\}', result)
-        if json_match:
-            parsed = json.loads(json_match.group())
-            action = parsed.get("action", "chat")
-            reason = parsed.get("reason", "")
-            print(f"  [Classify-Result] action={action}, reason={reason}", flush=True)
-            return action, reason
-        print(f"  [Classify-Result] JSON parse failed, defaulting to chat", flush=True)
-        return "chat", "AI \ud310\ub2e8 (JSON \ud30c\uc2f1 \uc2e4\ud328)"
-    except Exception as e:
-        print(f"  [Classify-Error] {str(e)}, defaulting to chat", flush=True)
-        return "chat", f"\ubd84\ub958 \uc2e4\ud328, chat \uae30\ubcf8\uac12 ({str(e)})"
 
 
 def decide_strategy(message, has_html, has_element):

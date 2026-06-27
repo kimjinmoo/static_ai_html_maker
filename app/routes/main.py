@@ -6,10 +6,10 @@ from app.model import llama_chat, llama_chat_stream_with_reasoning
 from app.chat import build_messages
 from app.modular import generate_single_page, generate_multi_page
 from app.thinking import filter_thinking_stream
-from app.strategies import classify_intent, decide_strategy
+from app.strategies import decide_strategy
 from app.prompts import MODULAR_MULTI_PAGE_PLAN_PROMPT
 from app.model import llama_chat_stream
-from app.utils import parse_multi_page_plan, strip_thinking
+from app.utils import parse_multi_page_plan, strip_thinking, ensure_complete_html, load_scaffold_css
 
 
 main_bp = Blueprint("main", __name__)
@@ -30,6 +30,8 @@ def chat():
     try:
         start_time = time.time()
         assistant_message = llama_chat(messages)
+        if '===HTML_START===' in assistant_message or '<!DOCTYPE html>' in assistant_message:
+            assistant_message = ensure_complete_html(assistant_message)
         token_count = len(assistant_message) // 4
         elapsed = time.time() - start_time
         speed = token_count / elapsed if elapsed > 0 else 0
@@ -198,7 +200,7 @@ def chat_stream_modular():
                 for p in pages:
                     print(f"  [Page] {p['name']} ({p['file']}): {p.get('sections', [])}")
 
-                multi_gen = generate_multi_page(context, user_message, history, menu_items, pages, design_content)
+                multi_gen = generate_multi_page(context, user_message, history, menu_items, pages, design_content, scaffold_css=load_scaffold_css(template))
                 for chunk in multi_gen:
                     yield chunk
 
@@ -212,7 +214,7 @@ def chat_stream_modular():
 
         return Response(generate(), mimetype="text/event-stream")
     else:
-        gen = generate_single_page(context, user_message, history)
+        gen = generate_single_page(context, user_message, history, scaffold_css=load_scaffold_css(template), template_name=template)
         return Response(gen, mimetype="text/event-stream")
 
 
@@ -224,18 +226,6 @@ def chat_test():
         return jsonify({"role": "assistant", "content": result[:200]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-@main_bp.route("/api/classify_intent", methods=["POST"])
-def api_classify_intent():
-    data = request.json
-    message = data.get("message", "").strip()
-    history = data.get("history", [])
-    has_html = data.get("has_html", False)
-    has_element = data.get("has_element", False)
-
-    action, reason = classify_intent(message, history, has_html, has_element)
-    return jsonify({"action": action, "reason": reason})
 
 
 @main_bp.route("/api/decide_strategy", methods=["POST"])
@@ -257,6 +247,7 @@ def api_review_code():
     # Pre-clean
     html = strip_thinking(html)
     html = html.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+    html = ensure_complete_html(html)
 
     if not html or len(html) < 50:
         return jsonify({"html": html})
@@ -287,6 +278,7 @@ def api_review_code():
         if result and len(result) > 50:
             result = strip_thinking(result)
             result = result.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+            result = ensure_complete_html(result)
             return jsonify({"html": result, "original": html})
     except Exception as e:
         print(f"[Review] Error: {e}")

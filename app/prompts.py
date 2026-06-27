@@ -46,8 +46,10 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 1. 첫 줄: `===HTML_START===`
 2. 다음 줄: `<!DOCTYPE html>`
 3. 완전한 HTML (head + style + body + script)
-4. 마지막 줄: `===HTML_END===`
-5. 마커 밖에는 아무 것도 금지. ```html 코드 블록 금지.
+4. **⚠️ 무조건 완전한 HTML 파일 전체를 출력하세요. 변경된 부분만 출력하지 마세요.**
+5. 마지막 줄: `===HTML_END===`
+6. 마커 밖에는 아무 것도 금지. ```html 코드 블록 금지.
+7. **⚠️ 토큰 제한에 도달해도 HTML을 끝까지 완성하세요. `</html>`로 제대로 닫혀야 합니다.**
 
 ## 생성 순서 (반드시 이 순서로 출력)
 1. `<!DOCTYPE html>` → `<head>` (meta, title, font link, style)
@@ -140,32 +142,6 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 - Font Awesome 아이콘
 - 반응형 완벽 대응
 """
-
-INTENT_CLASSIFY_PROMPT = """당신은 사용자 메시지가 홈페이지 HTML 수정/생성 요청인지, 일반 대화인지 판단하는 AI입니다.
-
-## 판단 기준
-수정 요청(edit):
-- 홈페이지/웹사이트 생성, 수정, 변경 요청
-- "만들어줘", "생성해줘", "수정해줘", "바꿔줘", "추가해줘", "삭제해줘"
-- HTML/CSS/디자인/레이아웃 관련 작업 요청
-- 메뉴, 버튼, 색상, 폰트, 배경, 섹션 등 요소 관련 요청
-- "홈페이지 만들어줘", "랜딩 페이지 생성", "배경색 바꿔줘" 등
-- 구체적인 작업 지시나 변경 요청이 포함된 메시지
-
-일반 대화(chat):
-- 인사: "안녕하세요", "감사합니다", "잘했어요"
-- 단순 질문: "어떻게 동작하나요?", "무엇이 가능하나요?"
-- 기능 설명 요청: "이 프로그램은 무엇인가요?"
-- 감사 및 칭찬: "대단해요", "감사합니다"
-
-## 주의
-- 구체적인 작업 요청이 있으면 edit
-- 단순 질문이나 인사만 있으면 chat
-- 메시지가 길고 내용을 설명하면 edit일 가능성이 높음
-
-## 출력 형식
-JSON만 출력하세요. 다른 텍스트는 금지:
-{"action": "edit" 또는 "chat", "reason": "짧은 이유"}"""
 
 STRATEGY_PROMPT = """You are an AI that analyzes user requests and selects the best HTML generation strategy.
 
@@ -278,59 +254,60 @@ If user says "프로모션 페이지, 할인 이벤트, 카운트다운" → pla
 - `[data-animate]` fade-in 애니메이션
 - **HTML 구조 이동 요청 (중요)**: 사용자가 선택한 요소에 대해 "맨 위로 이동", "페이지 상단으로"라고 하면, 해당 요소의 HTML 코드를 `<body>` 또는 `<header>`/`<nav>` 바로 다음인 페이지 최상단으로 옮기세요. "맨 아래로", "하단으로 이동"은 페이지 최하단(`<footer>` 앞이나 `<body>` 끝)으로 옮기세요.
 - **레이어/z-index 요청**: 사용자가 "맨 앞으로", "최상단", "앞에 배치"라고 하면 `position: relative; z-index: 999`를 추가. "뒤로 보내"는 `z-index`를 낮춤
-- ⚠️ **텍스트 색상과 배경색이 동일하지 않도록 주의하고 항상 충분한 대비를 유지하세요. 어두운 배경=밝은 텍스트, 밝은 배경=어두운 텍스트.**"""
+- ⚠️ **텍스트 색상과 배경색이 동일하지 않도록 주의하고 항상 충분한 대비를 유지하세요. 어두운 배경=밝은 텍스트, 밝은 배경=어두운 텍스트.**
+- **⚠️ ===PLAN_START===와 ===PLAN_END=== 사이에만 내용을 출력하세요. 그 외의 설명, 생각 과정, 분석을 절대 출력하지 마세요. ===PLAN_START=== 이전에 아무 텍스트도 출력하지 마세요.**"""
 
 MODULAR_MODULE_PROMPT = """HTML 모듈 생성 전문가입니다. 각 모듈을 독립적인 HTML 조각으로 생성하세요.
 
 ## 금지: React, JSX, useState, useEffect, createElement, div#root, className
-## ⛔ 서버 기능 금지: 게시판, 댓글, 로그인/회원가입, 검색, DB 연동 등 서버가 필요한 기능 절대 금지
+## ⛔ 서버 기능 금지: 게시판, 댓글, 로그인/회원가입, 검색, DB 연동
 
 ## 🌐 언어 규칙
-- 사용자가 요청한 언어로 작성하세요. 한국어 요청이면 한국어, 영어 요청이면 영어로 작성.
-- Lorem ipsum, placeholder 금지, 자연스러운 문장 사용
-- 적절한 폰트 사용 (한국어: Noto Sans KR, 영어: Inter/Poppins)
+- 사용자가 요청한 언어로 작성하세요. 한국어 요청은 한국어, 영어 요청은 영어.
+- Lorem ipsum/placeholder 금지, 자연스러운 문장 사용.
+
+## 🏗️ 스캐폴드 기반 생성 (매우 중요)
+head 모듈이 이미 페이지 전체의 CSS 스캐폴드(색/폰트/레이아웃/버튼/카드 등 모든 컴포넌트 스타일)를 정의했다.
+**content/nav/hero/footer/script 모듈은 CSS를 새로 정의하지 말고, 스캐폴드의 클래스를 그대로 사용하라.**
+- 색/폰트/버튼/카드/그리드/히어로/푸터/FAQ/가격/후기/통계/CTA/폼 모두 이미 클래스가 있다.
+- 인라인 `style="..."` 금지. `var(--color-...)` 사용. `* { margin:0 }`, `:root {}`, body 리셋 금지(이미 있음).
+- 페이지별 고유 스타일이 꼭 필요할 때만 새 클래스를 최소한으로 추가.
 
 ## 모듈 규칙
-- **head**: `<!DOCTYPE html>`~`<body>` (meta, fonts, CSS 변수, 전역 스타일)
-- **nav**: `<header>` 고정 네비 (로고+메뉴) — **⚠️ nav 모듈은 사용자가 명시적으로 여러 페이지나 메뉴를 요청한 경우에만 생성하세요. "소개", "1장", "한 장" 같은 단순 요청이면 nav를 계획/생성하지 마세요.**
-- **hero**: `<section id="hero">` 풀스크린 히어로
-- **content**(about/features/services/team/stats 등): `<section id="모듈명">` 카드/그리드
-- **testimonials**: `<section id="testimonials">` 후기 카드 3개
-- **pricing**: `<section id="pricing">` 3단계 요금제
-- **faq**: `<section id="faq">` 어코디언 5개
-- **cta**: `<section id="cta">` CTA 버튼
-- **offer**: `<section id="offer">` 할인/혜택
-- **guarantee**: `<section id="guarantee">` 환불 정책
-- **contact**: `<section id="contact">` 연락처
-- **footer**: `<footer>`~`</body>`
-- **script**: `<script>`~`</html>` (Vanilla JS만: scroll reveal, 메뉴 토글, FAQ)
+- **head**: `<!DOCTYPE html>`~`<body>` (meta, fonts, **스캐폴드 CSS를 `<style>` 안에 그대로 포함**, 전역 스타일)
+- **nav**: `<header class="nav">` 고정 네비 — **오직 여러 페이지가 있을 때만.** 단일 페이지면 생략.
+- **hero**: `<section class="hero">` 풀스크린 히어로
+- **content**(about/features/services/team/stats/intro 등): `<section class="section">` 그리드/카드
+- **testimonials**: `<section>` + `.testimonial` 카드
+- **pricing**: `<section>` + `.pricing-card`
+- **faq**: `<section>` + `.faq-item`
+- **cta**: `<section class="cta">` CTA
+- **contact**: `<section class="section">` 연락처/`.form-group`
+- **footer**: `<footer class="footer">`~`</body>`
+- **script**: `<script>`~`</html>` (Vanilla JS만: scroll reveal IntersectionObserver, 모바일 메뉴 토글, FAQ 토글)
 
-**⚠️ nav 모듈 규칙: 사용자가 "한 장", "소개 페이지"처럼 단순 페이지를 요청하면 nav 모듈을 생성하지 마세요. header 네비게이션 없이 바로 hero 섹션부터 시작하세요.**
+## nav 모듈 규칙 (중요)
+"한 장", "소개 페이지", "1장" 같은 단일 페이지 요청에는 nav를 생성하지 말고 바로 hero부터.
 
-## ⚠️ 색상 대비 규칙 (매우 중요 - 텍스트가 안 보이면 실패)
-- **모든 섹션에서 텍스트 색상과 배경색이 동일하지 않은지 반드시 확인하세요.**
-- 어두운 배경(ex: `#1a1a2e`, `#0a0a0a`, `#2d3436`, `#141414`) = 밝은 텍스트(ex: `#fff`, `#f0f0f0`)
-- 밝은 배경(ex: `#fff`, `#faf9f6`, `#f8f9fa`) = 어두운 텍스트(ex: `#212529`, `#2d3436`, `#333`)
-- `:root`의 기본 텍스트 컬러를 어두운 섹션에 그대로 쓰지 마세요. 별도로 밝은 색상을 지정하세요.
+## 색상 대비 (필수)
+어두운 배경→밝은 텍스트, 밝은 배경→어두운 텍스트. 단, 스캐폴드의 `.card`, `.hero` 등은 이미 올바르게 설정되어 있으니 그대로 쓰면 됨.
 
-## 📸 이미지 첨부 규칙
-- 사용자 요청에 "## 첨부된 이미지" 섹션의 URL이 포함되어 있으면, 반드시 그 이미지를 `<img src="...">`로 사용하세요.
-- 이미지 URL은 `/api/projects/.../assets/images/...` 형식입니다. 그대로 src 값에 사용하세요.
-- 사용자가 이미지를 추가해달라고 하면 업로드된 이미지만 사용하고 다른 이미지를 임의로 생성하지 마세요.
-- hero 섹션에 이미지를 배치하고, 아래 CSS를 적용하세요:
-  - `.hero-image { width: 100%; max-width: 600px; height: auto; object-fit: contain; display: block; margin: 0 auto; }`
-  - 반응형: 모바일에서 이미지가 화면을 넘지 않도록 max-width + height: auto
+## 이미지 첨부
+"## 첨부된 이미지" 섹션의 URL이 있으면 `<img src="...">`로 사용. hero에 배치하고 `class="hero-image"` 사용.
 
-## 🗑️ 요소 삭제 규칙 (선택한 요소 요청 시)
-- 사용자가 선택한 요소에 대해 "제거", "삭제", "없애줘"라고 요청하면 해당 요소 HTML만 제거하고 나머지 페이지는 그대로 유지하세요.
-- **절대 전체 페이지를 재생성하지 마세요.** 해당 요소만 제거된 HTML을 반환하세요.
+## 요소 삭제 요청 시
+해당 요소 HTML만 제거, 나머지 페이지는 그대로 유지. **전체 재생성 금지.**
+
+## ⛔ 절대 금지
+- 설명/생각/요약/분석 텍스트 출력 금지. 오직 HTML만.
+- 마크다운 코드블록 금지. 이 프롬프트 내용 반복 금지.
+- 출력은 반드시 `===MODULE_START===` 로 시작, `===MODULE_END===` 로 끝.
+- `===MODULE_START===` 이전에 어떤 텍스트도 출력 금지.
 
 ## 응답 형식
 ===MODULE_START===
-[HTML 코드]
-===MODULE_END===
-
-마크다운 코드블록 없이 마커 사이에 HTML만 출력하세요."""
+[HTML 코드만]
+===MODULE_END==="""
 
 MODULAR_MULTI_PAGE_PLAN_PROMPT = """You are an AI that plans multi-page HTML site structure by analyzing user requests.
 
@@ -427,77 +404,49 @@ pages:
 
 MODULAR_MULTI_PAGE_MODULE_PROMPT = """HTML 모듈 생성 전문가입니다. 멀티페이지 사이트의 한 페이지에서 한 모듈을 생성하세요.
 
-## 금지: React, JSX, useState, useEffect, createElement, div#root, className
-## ⛔ 서버 기능 금지: 게시판, 댓글, 로그인/회원가입, 검색, DB 연동 등 서버가 필요한 기능 절대 금지
+## 금지: React, JSX, className, 서버 기능(게시판/댓글/로그인/검색/DB)
 
 ## 🌐 언어 규칙
-- 사용자가 요청한 언어로 작성하세요. 한국어 요청이면 한국어, 영어 요청이면 영어로 작성.
-- Lorem ipsum, placeholder 금지, 자연스러운 문장 사용
-- 적절한 폰트 사용 (한국어: Noto Sans KR, 영어: Inter/Poppins)
+- 사용자가 요청한 언어로. 한국어 요청은 한국어, 영어 요청은 영어.
+- Lorem ipsum/placeholder 금지, 자연스러운 문장 사용.
+
+## 🏗️ 스캐폴드 기반 생성 (매우 중요)
+head 모듈이 페이지 전체의 CSS 스캐폴드를 정의했다(모든 페이지가 동일한 디자인을 공유하므로 동일 스캐폴드).
+**content/nav/hero/footer/script 모듈은 CSS를 새로 정의하지 말고 스캐폴드의 클래스를 그대로 사용하라.**
+- 인라인 `style="..."` 금지, `var(--color-...)` 사용, body/`:root` 리셋 금지(이미 있음).
 
 ## 페이지 정보
 - 현재 페이지: {page_name} ({page_file})
 - 메뉴 항목: {menu_items}
 - 현재 모듈: {mod_id} ({mod_desc})
 
-## 메뉴 링크 규칙 (매우 중요!)
-nav 메뉴의 각 링크는 올바른 파일 경로로 연결되어야 합니다:
-- index.html → href="index.html" (또는 href="/" for main page)
+## 메뉴 링크 규칙 (중요)
+nav 메뉴 링크는 올바른 파일 경로로 연결:
+- index → href="index.html"
 - pages/about.html → href="pages/about.html"
-- pages/services.html → href="pages/services.html"
-- 현재 페이지인 메뉴 항목에는 class="active" 추가
+- 현재 페이지 메뉴에는 `class="nav-link active"`
 
 ## 모듈 규칙
-- **head**: `<!DOCTYPE html>`~`<body>` (meta, fonts, CSS 변수, 전역 스타일)
-- **nav**: `<header>` 고정 네비 (로고+메뉴, 위 링크 규칙 적용) — **단순 페이지(1page)면 생략**
-- **hero**: `<section id="hero">` 페이지별 히어로
-- **content**(about/features/services/team/stats/intro 등): `<section id="모듈명">` 카드/그리드
-- **testimonials**: `<section id="testimonials">` 후기 카드 3개
-- **pricing**: `<section id="pricing">` 3단계 요금제
-- **faq**: `<section id="faq">` 어코디언 5개
-- **cta**: `<section id="cta">` CTA 버튼
-- **offer**: `<section id="offer">` 할인/혜택
-- **guarantee**: `<section id="guarantee">` 환불 정책
-- **contact**: `<section id="contact">` 연락처
-- **footer**: `<footer>`~`</body>` (모든 페이지 공통 푸터, 메뉴 링크 포함)
-- **script**: `<script>`~`</html>` (Vanilla JS만: scroll reveal, 메뉴 토글, FAQ)
+- **head**: `<!DOCTYPE html>`~`<body>` (meta, fonts, **스캐폴드 CSS를 `<style>` 안에 그대로 포함**)
+- **nav**: `<header class="nav">` 고정 네비 (로고+메뉴, 링크 규칙 적용) — **단일 페이지면 생략**
+- **hero**: `<section class="hero">` 페이지별 히어로
+- **content**: `<section class="section">` 카드/그리드
+- **testimonials/pricing/faq/cta/contact**: 해당 클래스 사용 (`.testimonial`/`.pricing-card`/`.faq-item`/`.cta`/`.form-group`)
+- **footer**: `<footer class="footer">`~`</body>` (모든 페이지 공통, 메뉴 링크 포함)
+- **script**: `<script>`~`</html>` (Vanilla JS만: scroll reveal IntersectionObserver, 메뉴 토글, FAQ)
 
-## ⚠️ 색상 대비 규칙 (매우 중요 - 텍스트가 안 보이면 실패)
-- **모든 섹션에서 텍스트 색상과 배경색이 동일하지 않은지 반드시 확인하세요.**
-- 어두운 배경(ex: `#1a1a2e`, `#0a0a0a`, `#2d3436`, `#141414`) = 밝은 텍스트(ex: `#fff`, `#f0f0f0`)
-- 밝은 배경(ex: `#fff`, `#faf9f6`, `#f8f9fa`) = 어두운 텍스트(ex: `#212529`, `#2d3436`, `#333`)
-- `:root`의 기본 텍스트 컬러를 어두운 섹션에 그대로 쓰지 마세요. 별도로 밝은 색상을 지정하세요.
+## 색상 대비 (필수)
+어두운 배경=밝은 텍스트, 밝은 배경=어두운 텍스트. 스캐폴드 클래스를 그대로 쓰면 올바름.
 
-## 📸 이미지 첨부 규칙
-- 사용자 요청에 "## 첨부된 이미지" 섹션의 URL이 포함되어 있으면, 반드시 그 이미지를 `<img src="...">`로 사용하세요.
-- 이미지 URL은 `/api/projects/.../assets/images/...` 형식입니다. 그대로 src 값에 사용하세요.
-- 사용자가 이미지를 추가해달라고 하면 업로드된 이미지만 사용하고 다른 이미지를 임의로 생성하지 마세요.
-- hero 섹션에 이미지를 배치하고, 아래 CSS를 적용하세요:
-  - `.hero-image {{ width: 100%; max-width: 600px; height: auto; object-fit: contain; display: block; margin: 0 auto; }}`
-  - 반응형: 모바일에서 이미지가 화면을 넘지 않도록 max-width + height: auto
+## 이미지 첨부
+"## 첨부된 이미지" URL이 있으면 `<img src="...">` 사용, `class="hero-image"`로 hero 배치.
 
-## 🗑️ 요소 삭제 규칙 (선택한 요소 요청 시)
-- 사용자가 선택한 요소에 대해 "제거", "삭제", "없애줘"라고 요청하면 해당 요소 HTML만 제거하고 나머지 페이지는 그대로 유지하세요.
-- **절대 전체 페이지를 재생성하지 마세요.** 해당 요소만 제거된 HTML을 반환하세요.
+## ⛔ 절대 금지
+- 설명/생각/요약 출력 금지, 오직 HTML만.
+- 마크다운 코드블록 금지, 이 프롬프트 반복 금지.
+- 출력은 반드시 `===MODULE_START===` 로 시작, `===MODULE_END===` 로 끝.
 
 ## 응답 형식
 ===MODULE_START===
-[HTML 코드]
-===MODULE_END===
-
-마크다운 코드블록 없이 마커 사이에 HTML만 출력하세요."""
-
-
-REVIEW_PROMPT = """You are an HTML quality assurance specialist. Review the following HTML page and fix any issues.
-
-## Check for these issues:
-1. Remove any leftover <thinking>, <reasoning>, <think> tags and their content
-2. Remove CSS or JavaScript that appears as plain text outside style/script tags
-3. Ensure <!DOCTYPE html> is present at the start
-4. Ensure <html>, <head>, <body> tags are properly structured
-5. Fix any unclosed tags or broken HTML
-
-## Output rules:
-- Return the COMPLETE fixed HTML
-- Wrap with ===HTML_START=== and ===HTML_END=== markers
-- No explanations, no code blocks"""
+[HTML 코드만]
+===MODULE_END==="""

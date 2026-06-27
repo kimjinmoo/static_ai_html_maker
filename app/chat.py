@@ -1,4 +1,5 @@
 from app.prompts import SYSTEM_PROMPT
+from app.utils import load_scaffold_css, SCAFFOLD_CLASS_REFERENCE
 
 
 TYPE_NAMES = {
@@ -31,12 +32,19 @@ def build_messages(data):
     context = f"\ud398\uc774\uc9c0 \uc720\ud615: {TYPE_NAMES.get(page_type, page_type)}\n\ub514\uc790\uc778 \ud15c\ud50c\ub9bf: {TEMPLATE_NAMES.get(template, template)}"
 
     if design_content:
-        context += f"\n\n## \ub514\uc790\uc778 \ud1a0\ud070\n{design_content[:500]}"
+        # design_content 전체 전달 (이전 500자 잘림 제거 - 토큰 대부분이 유실되는 문제)
+        context += f"\n\n## 디자인 토큰\n{design_content}"
 
-    if current_html:
-        context += f"\n\n\ud604\uc7ac \uba54\uc778 \ud398\uc774\uc9c0 HTML (\ub514\uc790\uc778 \ucc38\uace0\uc6a9):\n{current_html}"
-        if is_new_page:
-            final_message = f"""{user_message}
+    # 스캐폴드가 있으면 클래스 레퍼런스 + CSS를 context에 포함
+    scaffold_css = load_scaffold_css(template)
+    if scaffold_css:
+        context += f"\n\n## 📦 디자인 스캐폴드 CSS (반드시 <style>에 그대로 포함, 수정 금지)\n```css\n{scaffold_css}\n```"
+        context += f"\n\n{SCAFFOLD_CLASS_REFERENCE}"
+
+    if is_new_page:
+        if current_html:
+            context += f"\n\n\ud604\uc7ac \uba54\uc778 \ud398\uc774\uc9c0 HTML (\ub514\uc790\uc778 \ucc38\uace0\uc6a9):\n{current_html}"
+        final_message = f"""{user_message}
 
 ## \uc911\uc694: \uc0c8 \ud398\uc774\uc9c0 \uc0dd\uc131 \uc694\uccad\uc785\ub2c8\ub2e4.
 - \ud604\uc7ac \uba54\uc778 \ud398\uc774\uc9c0\uc758 \ub514\uc790\uc778, \uc0c9\uc0c1, \ud3f0\ud2b8, \ub808\uc774\uc544\uc6c3 \uc2a4\ud0c0\uc77c\uc744 **\ucc38\uace0**\ud558\uc5ec \uc0c8\ub85c\uc6b4 \ud558\uc704 \ud398\uc774\uc9c0\uc758 \uc644\uc804\ud55c HTML\uc744 \uc0dd\uc131\ud558\uc138\uc694.
@@ -45,13 +53,41 @@ def build_messages(data):
 - \ub124\ube44\uac8c\uc774\uc158 \ubc14\ub294 \uba54\uc778 \ud398\uc774\uc9c0\uc640 \ub3d9\uc77c\ud558\uac8c \uc720\uc9c0\ud558\uc138\uc694.
 - \ucf58\ud150\uce20 \uc601\uc5ed\ub9cc \uc0c8\ub85c \uc0dd\uc131\ud558\uc138\uc694.
 - **\uc911\uc694**: HTML \ucf54\ub4dc\ub294 \ubc18\ub4dc\uc2dc ===HTML_START=== \uc640 ===HTML_END=== \uc0ac\uc774\uc5d0 \ucd9c\ub825\ud558\uc138\uc694. \uadf8 \uc678 \uc124\uba85\uc740 \ucd5c\uc18c\ud654\ud558\uc138\uc694."""
-        elif element_context:
-            element_context = element_context[:2000]
-            final_message = f"""{element_context}
+    elif element_context and current_html:
+        element_context = element_context[:2000]
+        context += f"\n\n## \ud604\uc7ac \uc804\uccb4 HTML (\uc218\uc815 \ub300\uc0c1)\n```html\n{current_html}\n```"
+        delete_keywords = ["\uc0ad\uc81c", "\uc81c\uac70", "\uc5c6\uc560", "\uc9c0\uc6b0", "delete", "remove", "\uc9c0\uc6cc"]
+        is_delete = any(kw in user_message.lower() for kw in delete_keywords)
+        if is_delete:
+            final_message = f"""## \uc120\ud0dd\ud55c \uc694\uc18c \uc815\ubcf4
+{element_context}
 
-\uc704 \uc694\uccad\uc5d0 \ub530\ub77c \ud604\uc7ac HTML\uc758 \ud574\ub2f9 \uc694\uc18c\ub9cc \uc218\uc815\ud558\uac70\ub098 \uc0ad\uc81c\ud558\uc138\uc694. \ub9cc\uc57d \uc0ad\uc81c \uc694\uccad\uc774\uba74 \ud574\ub2f9 \uc694\uc18c\ub97c \uc644\uc804\ud788 \uc81c\uac70\ud558\uace0, \ub098\uba38\uc9c0 HTML\uc740 \uadf8\ub300\ub85c \uc720\uc9c0\ud558\uc138\uc694. \uc218\uc815\ub41c \uc644\uc804\ud55c HTML\uc744 ===HTML_START=== \uc640 ===HTML_END=== \uc0ac\uc774\uc5d0 \ucd9c\ub825\ud558\uc138\uc694."""
+## \uc0ac\uc6a9\uc790 \uc694\uccad (\uc0ad\uc81c)
+{user_message}
+
+## \uaddc\uce59 (\ubc18\ub4dc\uc2dc \uc900\uc218)
+1. **\uc120\ud0dd\ud55c \uc694\uc18c\ub9cc \uc644\uc804\ud788 \uc81c\uac70**\ud558\uace0, \ub098\uba38\uc9c0 HTML \uad6c\uc870\ub294 \uadf8\ub300\ub85c \uc720\uc9c0\ud558\uc138\uc694.
+2. \uc694\uc18c\ub97c \uc81c\uac70\ud560 \ub54c\ub294 \ud574\ub2f9 \uc694\uc18c\uc758 \uc5ec\ub294 \ud0dc\uadf8\ubd80\ud130 \ub2eb\ub294 \ud0dc\uadf8\uae4c\uc9c0 \uc644\uc804\ud788 \uc0ad\uc81c\ud558\uc138\uc694.
+3. \uc81c\uac70 \ud6c4 \uc0dd\uae30\ub294 \ube48 \ucee8\ud14c\uc774\ub108(\uc608: \ube48 `<div>`)\ub3c4 \ud568\uaed8 \uc815\ub9ac\ud558\uc138\uc694.
+4. **\uc218\uc815\ub41c \uc644\uc804\ud55c HTML \ud30c\uc77c \uc804\uccb4**\ub97c \ubc18\ub4dc\uc2dc \ucd9c\ub825\ud558\uc138\uc694.
+5. ===HTML_START=== \uc640 ===HTML_END=== \uc0ac\uc774\uc5d0 HTML\ub9cc \ucd9c\ub825\ud558\uc138\uc694.
+6. \ub9c8\ud06c\ub2e4\uc6b4 \ucf54\ub4dc\ube14\ub85d, \uc124\uba85, \ubcc0\uacbd\uc0ac\ud56d \ub9ac\uc2a4\ud2b8\ub97c \uc808\ub300 \ucd9c\ub825\ud558\uc9c0 \ub9c8\uc138\uc694."""
         else:
-            final_message = f"""{user_message}
+            final_message = f"""## \uc120\ud0dd\ud55c \uc694\uc18c \uc815\ubcf4
+{element_context}
+
+## \uc0ac\uc6a9\uc790 \uc694\uccad (\uc218\uc815)
+{user_message}
+
+## \uaddc\uce59 (\ubc18\ub4dc\uc2dc \uc900\uc218)
+1. **\uc120\ud0dd\ud55c \uc694\uc18c\ub9cc \uc218\uc815**\ud558\uace0, \ub098\uba38\uc9c0 HTML \uad6c\uc870\ub294 \uadf8\ub300\ub85c \uc720\uc9c0\ud558\uc138\uc694.
+2. \uc694\uc18c\uc758 \ub0b4\uc6a9(innerText), \uc2a4\ud0c0\uc77c(class/style), \uc18d\uc131(href/src \ub4f1)\uc744 \uc694\uccad\uc5d0 \ub530\ub77c \ubcc0\uacbd\ud558\uc138\uc694.
+3. **\uc218\uc815\ub41c \uc644\uc804\ud55c HTML \ud30c\uc77c \uc804\uccb4**\ub97c \ubc18\ub4dc\uc2dc \ucd9c\ub825\ud558\uc138\uc694.
+4. ===HTML_START=== \uc640 ===HTML_END=== \uc0ac\uc774\uc5d0 HTML\ub9cc \ucd9c\ub825\ud558\uc138\uc694.
+5. \ub9c8\ud06c\ub2e4\uc6b4 \ucf54\ub4dc\ube14\ub85d, \uc124\uba85, \ubcc0\uacbd\uc0ac\ud56d \ub9ac\uc2a4\ud2b8\ub97c \uc808\ub300 \ucd9c\ub825\ud558\uc9c0 \ub9c8\uc138\uc694."""
+    elif current_html:
+        context += f"\n\n## \ud604\uc7ac \uc804\uccb4 HTML (\uc218\uc815 \ub300\uc0c1)\n```html\n{current_html}\n```"
+        final_message = f"""{user_message}
 
 ## \uc911\uc694: HTML \uc218\uc815 \uaddc\uce59 (\ubc18\ub4dc\uc2dc \uc9c0\ud0a4\uc57c \ud568)
 - **\uc218\uc815\ub41c \uc644\uc804\ud55c HTML \ud30c\uc77c \uc804\uccb4**\ub97c \ucd9c\ub825\ud558\uc138\uc694. \uc77c\ubd80\ub9cc \ucd9c\ub825\ud558\uc9c0 \ub9c8\uc138\uc694.

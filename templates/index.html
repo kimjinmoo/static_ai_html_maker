@@ -522,12 +522,11 @@
               <div class="split-header">
                 <h3>👁 미리보기</h3>
                 <div class="preview-actions">
-                  <button class="btn-copy-code" onclick="copyCode()">
-                    📋 복사
-                  </button>
-                  <button class="btn-download" onclick="downloadHtml()">
-                    💾 HTML 저장
-                  </button>
+                  <label class="toggle-label" style="margin-right: 8px;">
+                    <input type="checkbox" id="devmode-toggle" checked onchange="toggleDevMode()" />
+                    <span class="toggle-switch"></span>
+                    <span class="toggle-text">⚙️ Dev 모드</span>
+                  </label>
                   <button class="btn-export" onclick="exportProject()">
                     📦 프로젝트 내보내기
                   </button>
