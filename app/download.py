@@ -22,9 +22,12 @@ download_lock = threading.Lock()
 
 def download_model_stream(repo_id, filename):
     def generate():
-        import time
+        import time, sys
         try:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.dirname(os.path.abspath(sys.executable))
+            else:
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             model_dir = os.path.join(base_dir, "models")
             os.makedirs(model_dir, exist_ok=True)
 

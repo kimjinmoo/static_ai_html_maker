@@ -69,12 +69,15 @@ def extract_module_html(module_content):
 
 def find_model_file():
     from app.config import MODEL_PATH, DEFAULT_MODEL
-    import os
+    import os, sys
 
     if MODEL_PATH and os.path.exists(MODEL_PATH):
         return MODEL_PATH
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(os.path.abspath(sys.executable))
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     model_dir = os.path.join(base_dir, "models")
 
     if os.path.exists(model_dir):
