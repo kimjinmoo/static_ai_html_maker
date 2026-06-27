@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 REM ============================================
-REM WebGenAI - Windows Run Script (llama-cpp-python)
+REM WebGenAI - Windows Run Script (CPU / AMD Vulkan)
 REM ============================================
 
 echo.
@@ -29,9 +29,29 @@ REM Activate virtual environment
 echo [2/3] Activating virtual environment...
 call .venv\Scripts\activate.bat
 
-REM Install dependencies
-echo [3/3] Checking dependencies...
-pip install -q -r requirements.txt
+REM Install core dependencies
+echo [3/3] Installing dependencies...
+pip install -q flask==3.0.0 markdown==3.5.1 huggingface-hub>=0.20.0 pywebview>=5.0
+
+REM Install llama-cpp-python (try CUDA 12.4 pre-built wheel, fall back to CPU)
+echo Installing llama-cpp-python...
+pip install -q llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124 2>nul
+if %errorlevel% neq 0 (
+    echo [INFO] CUDA wheel unavailable. Trying CPU pre-built wheel...
+    pip install -q llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu 2>nul
+)
+if %errorlevel% neq 0 (
+    echo [WARN] Pre-built wheel not available for this Python version.
+    echo Building from source (may fail on Windows due to MAX_PATH)...
+    if not exist "C:\tmp" mkdir C:\tmp 2>nul
+    set TMP=C:\tmp
+    set TEMP=C:\tmp
+    pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
+    if %errorlevel% neq 0 (
+        echo [WARN] Build failed. Use Gemini backend as alternative.
+        echo set LLM_BACKEND=gemini ^& set GEMINI_API_KEY=your-key
+    )
+)
 
 REM Check model
 echo.

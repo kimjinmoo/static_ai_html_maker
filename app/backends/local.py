@@ -1,4 +1,5 @@
 import os
+import sys
 import threading
 
 from app.backends.base import ModelBackend
@@ -8,6 +9,23 @@ from app.utils import find_model_file
 
 _llama = None
 _llama_lock = threading.Lock()
+
+
+def _setup_windows_cuda_path():
+    if sys.platform != "win32":
+        return
+    nvidia_base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".venv-nvidia", "Lib", "site-packages", "nvidia")
+    if not os.path.isdir(nvidia_base):
+        return
+    extra = []
+    for root, dirs, files in os.walk(nvidia_base):
+        for f in files:
+            if f.endswith(".dll"):
+                d = os.path.dirname(os.path.join(root, f))
+                if d not in extra:
+                    extra.append(d)
+    sep = ";" if ";" in os.environ.get("PATH", "") else os.pathsep
+    os.environ["PATH"] = sep.join(extra) + sep + os.environ.get("PATH", "")
 
 
 class LocalLlamaBackend(ModelBackend):
@@ -37,6 +55,7 @@ class LocalLlamaBackend(ModelBackend):
         print(f"\n\u23f3 \xeb\xaa\xa8\xeb\x8d\xb8 \xeb\xa1\x9c\xeb\x94\xa9 \xec\x8b\x9c\xec\x9e\x91: {os.path.basename(model_path)}")
         print(f"   n_ctx={N_CTX}, n_gpu_layers={N_GPU_LAYERS}, n_batch={N_BATCH}, n_ubatch={N_UBATCH}, n_threads={N_THREADS}")
 
+        _setup_windows_cuda_path()
         from llama_cpp import Llama
 
         try:

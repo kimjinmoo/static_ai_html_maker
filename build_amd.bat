@@ -33,14 +33,20 @@ REM Upgrade pip
 echo [3/5] Upgrading pip...
 python -m pip install --upgrade pip
 
+REM Install non-llama dependencies first
+echo [4/5] Installing core dependencies...
+pip install flask==3.0.0 gunicorn==21.2.0 pyinstaller>=6.15.0 markdown==3.5.1 pywebview>=5.0 huggingface-hub>=0.20.0
+
 REM Install llama-cpp-python with Vulkan support
-echo [4/5] Installing llama-cpp-python with Vulkan...
+echo Installing llama-cpp-python with Vulkan...
+if not exist "C:\tmp" mkdir C:\tmp 2>nul
+set TMP=C:\tmp
+set TEMP=C:\tmp
 set CMAKE_ARGS=-DGGML_VULKAN=on
 pip install llama-cpp-python --upgrade --force-reinstall --no-cache-dir
-
-REM Install remaining dependencies
-echo [5/5] Installing other dependencies...
-pip install flask==3.0.0 gunicorn==21.2.0 pyinstaller>=6.15.0 markdown==3.5.1 pywebview>=5.0 huggingface-hub>=0.20.0
+if %errorlevel% neq 0 (
+    echo [WARN] Vulkan build failed. Install Vulkan SDK from https://vulkan.lunarg.com/
+)
 
 REM Build
 echo.
