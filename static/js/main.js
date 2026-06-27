@@ -1573,13 +1573,23 @@ async function loadFileTree(projectId) {
 }
 
 function buildTreeHierarchy(flatTree) {
+  const nodeMap = {};
   const root = { children: [], depth: -1 };
-  const stack = [root];
   for (const item of flatTree) {
     const node = { ...item, children: [], expanded: true };
-    while (stack.length > 0 && stack[stack.length - 1].depth >= item.depth) stack.pop();
-    stack[stack.length - 1].children.push(node);
-    if (item.type === "folder") stack.push(node);
+    nodeMap[item.path] = node;
+    const parts = item.path.split('/');
+    if (parts.length <= 1) {
+      root.children.push(node);
+    } else {
+      const parentPath = parts.slice(0, -1).join('/');
+      const parent = nodeMap[parentPath];
+      if (parent && parent.type === "folder") {
+        parent.children.push(node);
+      } else {
+        root.children.push(node);
+      }
+    }
   }
   return root.children;
 }
