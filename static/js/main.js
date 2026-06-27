@@ -537,16 +537,36 @@ function injectInteractionScript(frame) {
 function updatePreview(html, isStreaming) {
   const frame = el.previewFrame;
   if (!frame || !html) return;
-  let processed = html.replace(/===HTML_START===|===HTML_END===/g, "").replace(/<script[\s\S]*?<\/script>/gi, "");
+  let processed = html.replace(/===HTML_START===|===HTML_END===/g, "").replace(/<script[\s\S]*?<\/script>/gi, "").trim();
+  if (!processed || processed.length < 10) return;
   const errorCatcher = '<script id="wgen-error-catcher">window.onerror=function(m,u,l,c){window.parent.postMessage({type:"preview-error",message:m,line:l,col:c},"*");return false;};window.addEventListener("unhandledrejection",function(e){window.parent.postMessage({type:"preview-error",message:"Unhandled promise: "+(e.reason&&e.reason.message||e.reason),"line":0,"col":0},"*");});<\/script>';
   const hi = processed.toLowerCase().indexOf("<head");
   if (hi !== -1) {
     const ho = processed.indexOf(">", hi);
     if (ho !== -1) processed = processed.slice(0, ho + 1) + errorCatcher + processed.slice(ho + 1);
   }
-  frame.srcdoc = processed;
+  try {
+    if (frame.srcdoc !== undefined) {
+      frame.srcdoc = processed;
+    } else {
+      const doc = frame.contentDocument || frame.contentWindow.document;
+      doc.open();
+      doc.write(processed);
+      doc.close();
+    }
+  } catch (e) {
+    console.warn("[preview] srcdoc failed, trying blob URL", e);
+    try {
+      const blob = new Blob([processed], { type: "text/html;charset=utf-8" });
+      frame.src = URL.createObjectURL(blob);
+    } catch (e2) {
+      console.error("[preview] all methods failed", e2);
+    }
+  }
+  frame.style.display = "block";
   frame.classList.remove("hidden");
   if (el.previewPlaceholder) el.previewPlaceholder.classList.add("hidden");
+  if (el.previewGenerating) el.previewGenerating.classList.add("hidden");
   if (!frame._loadHandlerSetup) {
     frame._loadHandlerSetup = true;
     frame.addEventListener("load", () => setTimeout(() => injectInteractionScript(frame), 200));
@@ -1510,16 +1530,23 @@ function renderProjects(projects) {
 
 async function loadProject(id) {
   try {
-    const res = await fetch(`/api/projects/${id}`);
+    const res = await fetch(`/api/projects/${id}?_=${Date.now()}`);
     const project = await res.json();
     if (project.error) return;
+    console.log("[loadProject] API response:", { 
+      hasHtml: "html" in project, 
+      htmlType: typeof project.html, 
+      htmlLen: project.html ? project.html.length : 0,
+      htmlStart: project.html ? project.html.substring(0, 100) : null 
+    });
     state.currentProjectId = project.id;
     state.projectTitle = project.title;
     state.selectedType = project.page_type;
     state.selectedTemplate = project.template;
     state.selectedDesignContent = project.design_content || "";
     state.chatHistory = project.history || [];
-    state.generatedHtml = project.html || "";
+    const rawHtml = project.html || "";
+    state.generatedHtml = rawHtml;
     state.multiPageMenuItems = project.menu_items || [];
     state.multiPageMode = project.multi_page || false;
 
@@ -1530,7 +1557,8 @@ async function loadProject(id) {
       addMessage("messages", msg.role, dc);
     });
 
-    if (state.generatedHtml) { updatePreview(state.generatedHtml, false); hideGenerating(); }
+    goToStep(3);
+    if (state.generatedHtml && state.generatedHtml.length > 10) { updatePreview(state.generatedHtml, false); hideGenerating(); }
 
     state.multiPageHtmls = {};
     const pageFiles = project.pages && project.pages.length > 0 ? project.pages : [];
@@ -1545,7 +1573,6 @@ async function loadProject(id) {
     if (state.selectedType) { const tc = document.querySelector(`.type-card[data-type="${state.selectedType}"]`); if (tc) tc.classList.add("selected"); }
     document.querySelectorAll(".template-card").forEach(el => el.classList.remove("selected"));
     if (state.selectedTemplate && state.selectedTemplate !== "custom") { const tc = document.querySelector(`.template-card[data-template="${state.selectedTemplate}"]`); if (tc) tc.classList.add("selected"); }
-    goToStep(3);
     if (el.projectTitle) el.projectTitle.value = state.projectTitle;
     loadProjects();
     loadFileTree(id);

@@ -206,13 +206,18 @@ def load_project(project_id):
     if os.path.exists(html_path):
         with open(html_path, 'r', encoding='utf-8') as f:
             project["html"] = f.read()
+        print(f"  [Load] {project_id}: read html from flat file ({len(project.get('html', ''))} chars)")
     else:
         project_dir = os.path.join(projects_dir, project_id)
         index_path = os.path.join(project_dir, "index.html")
         if os.path.exists(index_path):
             with open(index_path, 'r', encoding='utf-8') as f:
                 project["html"] = f.read()
+            print(f"  [Load] {project_id}: read html from dir/index.html ({len(project.get('html', ''))} chars)")
+        else:
+            print(f"  [Load] {project_id}: NO HTML FILE FOUND (flat={os.path.exists(html_path)}, dir/index={os.path.exists(index_path)})")
 
+    print(f"  [Load] Response has 'html' key: {'html' in project}, truthy: {bool(project.get('html'))}")
     return jsonify(project)
 
 
