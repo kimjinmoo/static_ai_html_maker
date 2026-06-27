@@ -429,6 +429,22 @@
             </div>
           </div>
 
+          <div class="generation-options-section" style="margin-top: 25px;">
+            <h3>⚙️ 생성 옵션</h3>
+            <div class="input-options-row" style="display: flex; gap: 20px; margin-top: 10px; margin-bottom: 20px;">
+              <label class="toggle-label">
+                <input type="checkbox" id="direct-mode-toggle" checked onchange="toggleDirectMode()" />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">⚡ 빠른 단일 생성 (추천)</span>
+              </label>
+              <label class="toggle-label">
+                <input type="checkbox" id="reasoning-toggle" checked onchange="toggleReasoning()" />
+                <span class="toggle-switch"></span>
+                <span class="toggle-text">🧠 AI 추론 모드</span>
+              </label>
+            </div>
+          </div>
+
           <div class="step-actions">
             <button class="btn-back" onclick="goToStep(1)">← 이전</button>
             <button
@@ -508,18 +524,7 @@
                     </svg>
                   </button>
                 </div>
-                <div class="input-options-row">
-                  <label class="toggle-label">
-                    <input type="checkbox" id="reasoning-toggle" checked onchange="toggleReasoning()" />
-                    <span class="toggle-switch"></span>
-                    <span class="toggle-text">🧠 추론 모드</span>
-                  </label>
-                  <label class="toggle-label" style="margin-left: 15px;">
-                    <input type="checkbox" id="direct-mode-toggle" checked onchange="toggleDirectMode()" />
-                    <span class="toggle-switch"></span>
-                    <span class="toggle-text">⚡ 빠른 단일 생성</span>
-                  </label>
-                </div>
+
                 <div class="input-limitation-note">⚡ 정적 HTML만 생성 가능 (게시판/로그인/DB 등 서버 기능 제외)</div>
               </div>
             </div>
