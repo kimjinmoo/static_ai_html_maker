@@ -17,7 +17,8 @@ def _ensure_log():
     global _log_file
     if _log_file is None:
         try:
-            d = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+            base = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
+            d = os.path.join(base, "logs")
             os.makedirs(d, exist_ok=True)
             _log_file = open(os.path.join(d, "webgen.log"), "a", encoding="utf-8")
         except Exception:
