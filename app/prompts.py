@@ -88,10 +88,17 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 - **Elegant Warm**: Playfair Display + Source Sans 3, 오프화이트 배경(#faf9f6), 골드 액센트
 - **Custom (URL 기반)**: 제공된 디자인 토큰 참고
 
+## 📁 파일 구조 (매우 중요)
+- **index.html**: 메인 페이지. `<head>`에 CSS는 `<link rel="stylesheet" href="assets/css/style.css">`로, JS는 `</body>` 직전에 `<script src="assets/js/main.js"></script>`로 연결하세요.
+- **pages/**: 서브 페이지들. `pages/about.html` 등으로 저장되며 동일한 구조로 CSS/JS 링크 포함.
+- **assets/css/style.css**: 모든 페이지의 공통 CSS. `<style>` 태그 대신 이 파일에 CSS를 작성하세요.
+- **assets/js/main.js**: 모든 페이지의 공통 JavaScript. `<script>` 태그 대신 이 파일에 JS를 작성하세요.
+- **⚠️ CSS와 JS는 `<style>`/`<script>` 인라인 태그를 사용하지 말고 외부 파일을 통해 연결하세요.**
+
 ## HTML 생성 규칙
 - `<!DOCTYPE html>`로 시작, `<head>` + `<body>` 모두 포함
-- **⚠️ 모든 CSS는 반드시 `<style>` 태그 안에 넣으세요. CSS 코드를 `<style>` 밖에 텍스트로 출력하면 화면에 그대로 보여서 페이지가 깨집니다.**
-- CSS는 `<style>` 태그 안에, JS는 `<script>` 태그 안에 포함하세요.
+- CSS: `<link rel="stylesheet" href="assets/css/style.css">` 사용 (인라인 `<style>` 금지)
+- JS: `<script src="assets/js/main.js"></script>` 사용 (인라인 `<script>` 금지)
 - `* { margin: 0; padding: 0; box-sizing: border-box; }` 리셋 필수
 - Google Fonts `<link>`로 폰트 로드
 - Font Awesome CDN으로 아이콘 사용

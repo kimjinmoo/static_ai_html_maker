@@ -113,6 +113,8 @@ def chat_stream_modular():
     user_message = data.get("message", "")
     history = data.get("history", [])
     current_html = data.get("current_html", "")
+    current_css = data.get("current_css", "")
+    current_js = data.get("current_js", "")
     is_new_page = data.get("is_new_page", False)
     multi_page = data.get("multi_page", False)
 
@@ -137,6 +139,11 @@ def chat_stream_modular():
 
     if current_html and not is_new_page:
         context += f"\n\n## \ud604\uc7ac \ud398\uc774\uc9c0 HTML (\uc218\uc815 \uae30\uc900)\n```html\n{current_html[:20000]}\n```"
+
+    if current_css:
+        context += f"\n\n## \ud604\uc7ac CSS (assets/css/style.css)\n```css\n{current_css[:10000]}\n```"
+    if current_js:
+        context += f"\n\n## \ud604\uc7ac JavaScript (assets/js/main.js)\n```javascript\n{current_js[:10000]}\n```"
 
     if multi_page:
         plan_messages = [

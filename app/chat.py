@@ -21,6 +21,8 @@ def build_messages(data):
     page_type = data.get("page_type", "")
     template = data.get("template", "")
     current_html = data.get("current_html", "")
+    current_css = data.get("current_css", "")
+    current_js = data.get("current_js", "")
     design_content = data.get("design_content", "")
     element_context = data.get("element_context", "")
     is_new_page = data.get("is_new_page", False)
@@ -34,6 +36,10 @@ def build_messages(data):
     if current_html:
         html_trunc = current_html[:20000] + ("...(truncated)" if len(current_html) > 20000 else "")
         context += f"\n\n\ud604\uc7ac \uba54\uc778 \ud398\uc774\uc9c0 HTML (\ub514\uc790\uc778 \ucc38\uace0\uc6a9, \uc77c\ubd80):\n{html_trunc}"
+        if current_css:
+            context += f"\n\n## \ud604\uc7ac CSS (assets/css/style.css)\n{current_css[:5000]}"
+        if current_js:
+            context += f"\n\n## \ud604\uc7ac JavaScript (assets/js/main.js)\n{current_js[:5000]}"
         if is_new_page:
             final_message = f"""{user_message}
 
