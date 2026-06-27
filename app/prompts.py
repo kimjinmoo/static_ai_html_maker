@@ -64,17 +64,17 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 ## 페이지 유형별 구조 (요청 성격에 따라 유연하게 적용)
 
 ### 회사 사이트 (company)
-일반적인 구조: hero, about, services, team, stats, contact, `<footer>` 푸터
+일반적인 구조: hero, about, contact, `<footer>` 푸터
 - 회사/브랜드 소개가 목적
 - **⚠️ 네비게이션 메뉴는 여러 페이지가 있는 경우에만 추가하세요. 1페이지 요청이면 절대 nav 생성 금지.**
 
 ### 랜딩 페이지 (landing)
-일반적인 구조: hero, features, how-it-works, testimonials, pricing, faq, cta, `<footer>` 푸터
+일반적인 구조: hero, features, pricing, cta, `<footer>` 푸터
 - 전환 중심 페이지
 - **⚠️ 네비게이션 메뉴는 여러 페이지가 있는 경우에만 추가하세요. 1페이지 요청이면 절대 nav 생성 금지.**
 
 ### 프로모션 페이지 (promotion)
-일반적인 구조: hero (카운트다운), offer, features, testimonials, guarantee, cta, `<footer>` 푸터
+일반적인 구조: hero (카운트다운), features, cta, `<footer>` 푸터
 - 이벤트/프로모션 특화 구조
 - **⚠️ 네비게이션 메뉴는 여러 페이지가 있는 경우에만 추가하세요. 1페이지 요청이면 절대 nav 생성 금지.**
 

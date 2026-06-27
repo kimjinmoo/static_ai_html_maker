@@ -15,12 +15,16 @@ from app.utils import get_projects_dir
 project_bp = Blueprint("project", __name__)
 
 
-def _extract_assets(project_dir, html):
+def _extract_assets(project_dir, html, file_path="index.html"):
     """Extract inline CSS/JS from HTML to separate files and return HTML with external links."""
     css_dir = os.path.join(project_dir, "assets", "css")
     js_dir = os.path.join(project_dir, "assets", "js")
     os.makedirs(css_dir, exist_ok=True)
     os.makedirs(js_dir, exist_ok=True)
+
+    # Calculate correct relative path for assets
+    depth = file_path.count("/")
+    prefix = "../" * depth if depth > 0 else ""
 
     css_blocks = re.findall(r'<style[^>]*>([\s\S]*?)</style>', html, re.IGNORECASE)
     if css_blocks:
@@ -30,7 +34,7 @@ def _extract_assets(project_dir, html):
         html = re.sub(r'<style[^>]*>[\s\S]*?</style>\s*', '', html, flags=re.IGNORECASE)
         head_close = html.rfind('</head>')
         if head_close != -1:
-            link_tag = '    <link rel="stylesheet" href="assets/css/style.css">\n'
+            link_tag = f'    <link rel="stylesheet" href="{prefix}assets/css/style.css">\n'
             html = html[:head_close] + link_tag + html[head_close:]
 
     js_blocks = []
@@ -45,7 +49,7 @@ def _extract_assets(project_dir, html):
         html = re.sub(r'<script(?!\s+src)[^>]*>[\s\S]*?</script>\s*', '', html, flags=re.IGNORECASE)
         body_end = html.rfind('</body>')
         if body_end != -1:
-            script_tag = '    <script src="assets/js/main.js"></script>\n'
+            script_tag = f'    <script src="{prefix}assets/js/main.js"></script>\n'
             html = html[:body_end] + script_tag + html[body_end:]
 
     return html
@@ -382,13 +386,14 @@ def save_project_file(project_id):
         f.write(content)
     print(f"  [File] {abs_full}")
 
-    # Extract CSS/JS from index.html to external files and update HTML
-    if filepath == "index.html":
-        updated = _extract_assets(project_dir, content)
+    # Extract CSS/JS from HTML files to external files and update HTML
+    if filepath.endswith(".html"):
+        is_sub = filepath.startswith("pages") or filepath.count("/") > 0
+        updated = _extract_assets(project_dir, content, filepath)
         if updated != content:
             with open(abs_full, 'w', encoding='utf-8') as f:
                 f.write(updated)
-            print(f"  [Assets] Extracted CSS/JS to assets/")
+            print(f"  [Assets] Extracted CSS/JS from {filepath}")
 
     if filepath.startswith("pages") and filepath.endswith(".html"):
         json_path = os.path.join(projects_dir, f"{project_id}.json")
