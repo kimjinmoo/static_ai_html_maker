@@ -67,7 +67,7 @@ def init_project():
     project_dir = os.path.join(projects_dir, project_id)
     os.makedirs(project_dir, exist_ok=True)
 
-    for subdir in ["assets/css", "assets/js", "assets/fonts", "assets/images", "pages"]:
+    for subdir in ["assets/fonts", "assets/images", "pages"]:
         os.makedirs(os.path.join(project_dir, subdir), exist_ok=True)
 
     empty_html = """<!DOCTYPE html>
@@ -157,7 +157,7 @@ def save_project():
 
     project_dir = os.path.join(projects_dir, project_id)
     print(f"  [Dir]  {project_dir}/")
-    for subdir in ["assets/css", "assets/js", "assets/fonts", "assets/images", "pages"]:
+    for subdir in ["assets/fonts", "assets/images", "pages"]:
         dir_path = os.path.join(project_dir, subdir)
         os.makedirs(dir_path, exist_ok=True)
 
@@ -348,7 +348,7 @@ def project_tree(project_id):
             sections = re.findall(r'<section[^>]*id=["\']?([^"\'>]*)["\']?[^>]*>', html_content)
 
             tree.append({"name": "index.html", "path": "index.html", "type": "file", "ext": ".html", "depth": 0})
-            for folder in ["assets", "assets/css", "assets/js", "assets/images", "pages"]:
+            for folder in ["assets", "assets/images", "pages"]:
                 d = folder.count("/")
                 tree.append({"name": folder.split("/")[-1], "path": folder, "type": "folder", "depth": d})
 
@@ -425,7 +425,7 @@ def save_multipage_project(project_id):
     project_dir = os.path.join(projects_dir, project_id)
     os.makedirs(project_dir, exist_ok=True)
 
-    for subdir in ["assets/css", "assets/js", "assets/fonts", "assets/images", "pages"]:
+    for subdir in ["assets/fonts", "assets/images", "pages"]:
         os.makedirs(os.path.join(project_dir, subdir), exist_ok=True)
 
     saved_files = []
@@ -554,7 +554,7 @@ def export_project(project_id):
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
             with open(html_path, 'r', encoding='utf-8') as f:
                 zf.writestr("index.html", f.read())
-            for d in ["assets/css/.gitkeep", "assets/js/.gitkeep", "assets/fonts/.gitkeep", "assets/images/.gitkeep", "pages/.gitkeep"]:
+            for d in ["assets/fonts/.gitkeep", "assets/images/.gitkeep", "pages/.gitkeep"]:
                 zf.writestr(d, "")
 
         zip_buffer.seek(0)
