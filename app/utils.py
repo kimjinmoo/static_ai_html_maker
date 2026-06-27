@@ -10,11 +10,11 @@ def strip_thinking(text):
     for marker in ["Thinking Process:", "생각 과정:"]:
         idx = text.find(marker)
         while idx != -1:
-            end_match = re.search(r'</think>|---\s*\n|===HTML|===MODULE|===PLAN', text[idx + len(marker):])
-            if end_match:
-                text = text[:idx] + text[idx + len(marker) + end_match.end():]
-            else:
+            line_end = text.find('\n', idx)
+            if line_end == -1:
                 text = text[:idx]
+            else:
+                text = text[:idx] + text[line_end + 1:]
             idx = text.find(marker)
     return text.strip()
 
@@ -50,17 +50,6 @@ def extract_module_html(module_content):
 
     if mod_html:
         mod_html = strip_thinking(mod_html)
-        for marker in ["Thinking Process:", "생각 과정:"]:
-            idx = mod_html.find(marker)
-            if idx != -1:
-                after = mod_html[idx:]
-                end_match = re.search(r'</think>|---\s*\n|===HTML', after)
-                if end_match:
-                    end_idx = idx + end_match.end()
-                    mod_html = mod_html[:idx] + mod_html[end_idx:]
-                else:
-                    mod_html = mod_html[:idx]
-        mod_html = mod_html.strip()
 
     return mod_html
 

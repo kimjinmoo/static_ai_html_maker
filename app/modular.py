@@ -72,7 +72,7 @@ def generate_single_page(context, user_message, history):
                     token_count += 1
                     yield f"data: {json.dumps({'type': 'module_token', 'id': mod_id, 'content': token})}\n\n"
 
-                mod_html = extract_module_html(module_content) or module_content.strip()
+                mod_html = extract_module_html(module_content) or strip_thinking(module_content.strip())
                 mod_elapsed = time.time() - mod_start
                 mod_speed = token_count / mod_elapsed if mod_elapsed > 0 else 0
                 print(f"  [Mod-Done] {mod_id}: {token_count} tok, {mod_elapsed:.1f}s, {mod_speed:.1f} tok/s", flush=True)
@@ -179,7 +179,7 @@ def generate_multi_page(context, user_message, history, menu_items, pages, desig
                         token_count += 1
                         yield f"data: {json.dumps({'type': 'module_token', 'page': page_name, 'id': mod_id, 'content': token})}\n\n"
 
-                    mod_html = extract_module_html(module_content) or module_content.strip()
+                    mod_html = extract_module_html(module_content) or strip_thinking(module_content.strip())
                     mod_elapsed = time.time() - mod_start
                     mod_speed = token_count / mod_elapsed if mod_elapsed > 0 else 0
                     print(f"  [MultiPage] {page_name}/{mod_id}: {token_count} tok, {mod_elapsed:.1f}s, {mod_speed:.1f} tok/s", flush=True)
@@ -217,6 +217,7 @@ def generate_multi_page(context, user_message, history, menu_items, pages, desig
 
 
 def _parse_modules(plan_content):
+    plan_content = strip_thinking(plan_content)
     modules = []
     plan_upper = plan_content.upper()
     plan_start = plan_upper.find("===PLAN_START===")
@@ -226,6 +227,8 @@ def _parse_modules(plan_content):
         plan_text = plan_content[plan_start + 16:]
         if plan_end != -1 and plan_end > plan_start:
             plan_text = plan_text[:plan_end - plan_start - 16].strip()
+        elif plan_end == -1:
+            plan_text = plan_text.strip()
     else:
         return modules
 
@@ -233,15 +236,20 @@ def _parse_modules(plan_content):
         line = line.strip()
         if not line:
             continue
-        if line.upper().startswith("===PLAN"):
+        if line.upper().startswith("==="):
             continue
         m = re.match(r'\d+\.\s*(\S+)\s*[-\u2013\u2014]\s*(.*)', line)
         if m:
             mod_id = m.group(1).lower().strip().strip('[]')
             mod_desc = m.group(2).strip()
             modules.append({"id": mod_id, "description": mod_desc})
+        elif len(line) > 80:
+            continue
         elif line and not line.upper().startswith("==="):
-            mod_id = line.lower().split()[0].strip('.').strip()
+            first = line.lower().split()[0].strip('.').strip()
+            if first in ("i", "we", "the", "this", "that", "it", "you", "please", "here", "first", "next", "then", "finally", "will", "create", "make", "use", "using"):
+                continue
+            mod_id = first
             modules.append({"id": mod_id, "description": line})
 
-    return modules
+    return modules[:20]
