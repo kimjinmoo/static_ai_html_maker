@@ -632,12 +632,14 @@ function updateProgressBar(pct) {
   if (el.generatingProgressPercent) el.generatingProgressPercent.textContent = `${Math.round(clamped)}%`;
 }
 
+let _lastSpeed = "";
 function updateModularProgress(completedIds, completedCount, modules) {
   if (!el.previewGenerating || !el.generatingProgressList || !el.generatingStatusText) return;
   const set = new Set(completedIds);
   let activeIdx = -1;
   for (let i = 0; i < modules.length; i++) { if (!set.has(modules[i].id)) { activeIdx = i; break; } }
-  el.generatingStatusText.textContent = activeIdx !== -1 ? `${activeIdx + 1}/${modules.length}: ${modules[activeIdx].description || modules[activeIdx].id} \uc0dd\uc131 \uc911...` : `${completedCount}/${modules.length} \ubaa8\ub4c8 \uc644\ub8cc`;
+  const speedText = _lastSpeed ? ` [${_lastSpeed}]` : "";
+  el.generatingStatusText.textContent = (activeIdx !== -1 ? `${activeIdx + 1}/${modules.length}: ${modules[activeIdx].description || modules[activeIdx].id} \uc0dd\uc131 \uc911...` : `${completedCount}/${modules.length} \ubaa8\ub4c8 \uc644\ub8cc`) + speedText;
   el.generatingProgressList.innerHTML = modules.map((m, i) => {
     let status = "pending", icon = "\u00b7";
     if (set.has(m.id)) { status = "completed"; icon = "\u2713"; }
@@ -665,7 +667,8 @@ function updateMultiPageProgress(completedModules, currentPageMods, totalModules
     el.generatingProgressList.innerHTML += `<div class="generating-progress-item ${status}"><span class="generating-progress-icon">${icon}</span><span>${displayName} ${modCount ? `(${modCount})` : ""}</span></div>`;
   }
   const currentLabel = (state.multiPagePlanPages[currentPageIdx] || {}).name || pageName || `\ud398\uc774\uc9c0 ${currentPageIdx + 1}`;
-  el.generatingStatusText.textContent = `\ud83d\udcc4 ${currentLabel} \uc0dd\uc131 \uc911${totalModules ? ` (${completedModules}/${totalModules})` : ""}...`;
+  const speedText = _lastSpeed ? ` [${_lastSpeed}]` : "";
+  el.generatingStatusText.textContent = `\ud83d\udcc4 ${currentLabel} \uc0dd\uc131 \uc911${totalModules ? ` (${completedModules}/${totalModules})` : ""}...${speedText}`;
   const pct = Math.min(95, ((currentPageIdx) / Math.max(1, totalPages) * 100) + (totalModules ? (completedModules / Math.max(1, totalModules)) * (100 / Math.max(1, totalPages)) : 0));
   updateProgressBar(pct);
 }
@@ -1033,7 +1036,8 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
       currentModuleId = "";
       completedCount++;
       const name = modules[d.index]?.description || d.id;
-      assistantDiv.innerHTML = `\u2705 ${completedCount}/${modules.length} \uc644\ub8cc \u2014 ${name}`;
+      if (d.speed) _lastSpeed = `${d.speed} tok/s`;
+      assistantDiv.innerHTML = `\u2705 ${completedCount}/${modules.length} \uc644\ub8cc \u2014 ${name} ${_lastSpeed ? `(${_lastSpeed})` : ""}`;
       scrollToBottom("messages");
       let raw = moduleHtmls[d.id] || "";
       const ms = raw.indexOf("===MODULE_START===");

@@ -147,7 +147,7 @@ def generate_single_page(context, user_message, history):
                 print(f"  [Mod-Done] {mod_id}: {token_count} tok, {mod_elapsed:.1f}s, {mod_speed:.1f} tok/s", flush=True)
 
                 generated_modules[mod_id] = mod_html
-                yield f"data: {json.dumps({'type': 'module_complete', 'id': mod_id, 'index': i, 'total': len(modules)})}\n\n"
+                yield f"data: {json.dumps({'type': 'module_complete', 'id': mod_id, 'index': i, 'total': len(modules), 'tokens': token_count, 'speed': round(mod_speed, 1)})}\n\n"
 
             # Phase 3: Assemble
             assembled_parts = []
@@ -309,7 +309,7 @@ def generate_multi_page(context, user_message, history, menu_items, pages, desig
                         print(f"  [MultiPage] {page_name}/{mod_id}: {token_count} tok, {mod_elapsed:.1f}s, {mod_speed:.1f} tok/s", flush=True)
 
                         generated_modules[mod_id] = mod_html
-                        yield f"data: {json.dumps({'type': 'module_complete', 'page': page_name, 'id': mod_id, 'index': i, 'total': len(modules)})}\n\n"
+                        yield f"data: {json.dumps({'type': 'module_complete', 'page': page_name, 'id': mod_id, 'index': i, 'total': len(modules), 'tokens': token_count, 'speed': round(mod_speed, 1)})}\n\n"
 
                     # Assemble page
                     assembled_parts = []
