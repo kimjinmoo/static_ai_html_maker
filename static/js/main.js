@@ -588,6 +588,20 @@ function showGenerating(isEditing) {
   if (el.generatingProgressList) el.generatingProgressList.innerHTML = "";
   if (el.generatingStatusText) el.generatingStatusText.textContent = isEditing ? "\uc218\uc815 \uc694\uccad\uc744 \ucc98\ub9ac \uc911\uc785\ub2c8\ub2e4..." : "AI\uac00 \ud398\uc774\uc9c0\ub97c \ub9cc\ub4e4\uace0 \uc788\uc2b5\ub2c8\ub2e4...";
   if (el.previewFrame) el.previewFrame.classList.add("hidden");
+  // Create empty CSS/JS placeholder files at the start of any generation
+  state.generatingFiles = { "assets/css/style.css": true, "assets/js/main.js": true };
+  if (state.currentProjectId) {
+    Promise.all([
+      fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: "assets/css/style.css", content: "/* style.css */\n" }),
+      }).catch(() => {}),
+      fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: "assets/js/main.js", content: "// main.js\n" }),
+      }).catch(() => {}),
+    ]).then(() => loadFileTree(state.currentProjectId)).catch(() => {});
+  }
   updateProgressBar(0);
 }
 
@@ -887,14 +901,11 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
     state.multiPageMode = state.multiPagePlanPages.length > 1;
     totalPages = state.multiPagePlanPages.length;
     state.multiPageMenuItems = mpMenuItems;
-    // Mark all page files as generating
-    state.generatingFiles = {};
+    // Mark all page files as generating (preserve CSS/JS from showGenerating)
     (d.pages || []).forEach(pg => { state.generatingFiles[pg.file] = true; });
-    state.generatingFiles["assets/css/style.css"] = true;
-    state.generatingFiles["assets/js/main.js"] = true;
     assistantDiv.innerHTML = `\ud83d\udccb \uba40\ud2f0\ud398\uc774\uc9c0 \uacc4\ud68d \uc644\ub8cc (${totalPages}\uac1c \ud398\uc774\uc9c0)<br><span style="color: var(--text-muted); font-size: 0.85rem;">\uba54\ub274: ${mpMenuItems.join(" | ")}</span>`;
     scrollToBottom("messages");
-    // Create all files immediately (placeholders for pages + empty CSS/JS)
+    // Create all page placeholder files immediately (CSS/JS already created by showGenerating)
     if (state.currentProjectId) {
       (d.pages || []).forEach(pg => {
         const ph = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${pg.title || pg.name || ''}</title><link rel="stylesheet" href="assets/css/style.css"></head><body><p>${pg.file || pg.name} \uc0dd\uc131 \uc911...</p><script src="assets/js/main.js"></script></body></html>`;
@@ -903,15 +914,6 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
           body: JSON.stringify({ path: pg.file, content: ph }),
         }).catch(() => {});
       });
-      // Create empty CSS/JS files
-      fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: "assets/css/style.css", content: "/* style.css */\n" }),
-      }).catch(() => {});
-      fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: "assets/js/main.js", content: "// main.js\n" }),
-      }).catch(() => {});
       loadFileTree(state.currentProjectId);
     }
     updateMultiPageProgress(0, {}, 0, totalPages, 0, (d.pages?.[0] || {}).name || "");
@@ -1024,22 +1026,9 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
 
   sse.on("plan", (d) => {
     modules = d.modules || [];
-    state.generatingFiles = { "index.html": true, "assets/css/style.css": true, "assets/js/main.js": true };
+    state.generatingFiles["index.html"] = true;
     assistantDiv.innerHTML = `\ud83d\udccb \ubaa8\ub4c8 \uacc4\ud68d \uc644\ub8cc (${modules.length}\uac1c \ubaa8\ub4c8)`;
     scrollToBottom("messages");
-    // Create empty CSS/JS files immediately
-    if (state.currentProjectId) {
-      Promise.all([
-        fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: "assets/css/style.css", content: "/* style.css */\n" }),
-        }),
-        fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: "assets/js/main.js", content: "// main.js\n" }),
-        }),
-      ]).then(() => loadFileTree(state.currentProjectId)).catch(() => {});
-    }
     updateModularProgress([], 0, modules);
     updateProgressBar(5);
   });
