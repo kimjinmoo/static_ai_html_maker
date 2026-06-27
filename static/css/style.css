@@ -1660,8 +1660,10 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 40px 24px;
+  overflow: hidden;
   background: var(--bg-secondary);
   z-index: 10;
 }
@@ -1736,7 +1738,8 @@ body {
 .generating-progress-list {
   width: 85%;
   max-width: 360px;
-  max-height: 240px;
+  max-height: 30vh;
+  min-height: 60px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
