@@ -26,6 +26,12 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 - CSS: `<style>` 블록
 - JavaScript: `<script>` 블록 + `document.querySelector`, `addEventListener`, `classList`
 
+## 📸 이미지 첨부 규칙 (중요)
+- 사용자 메시지에 `## 첨부된 이미지` 섹션이 포함되어 있으면, 해당 이미지 URL을 HTML에서 `<img src="...">`로 사용하세요.
+- 이미지를 페이지에 추가해달라는 요청을 받으면 반드시 업로드된 이미지 URL을 사용하고, 절대 다른 이미지를 임의로 생성하지 마세요.
+- 이미지 URL 형식: `/api/projects/{id}/assets/images/{filename}`
+- `<img>` 태그에 `alt` 속성을 한국어로 추가하고, 필요시 `style`로 크기/위치를 조정하세요.
+
 ## 응답 형식
 1. 첫 줄: `===HTML_START===`
 2. 다음 줄: `<!DOCTYPE html>`
@@ -91,6 +97,7 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 - 애니메이션: `[data-animate]` opacity 0 → visible 클래스로 fade-in
 - 그라데이션 텍스트 효과
 - box-shadow, transition 활용
+- ⚠️ **텍스트 색상과 배경색이 동일하지 않도록 주의하세요. 항상 충분한 대비(contrast)를 유지하세요.** 예: 흰 배경(#fff)에 흰 텍스트나, 어두운 배경(#0a0a0a)에 어두운 텍스트(#333)를 사용하지 마세요.
 
 ## JavaScript 규칙
 - IntersectionObserver로 scroll reveal 애니메이션
@@ -249,7 +256,8 @@ MODULAR_PLAN_PROMPT = """당신은 정적 HTML 페이지를 모듈 단위로 생
 - container 클래스 (max-width 1200px)
 - 카드, 버튼, 호버 효과
 - 반응형 (media query)
-- `[data-animate]` fade-in 애니메이션"""
+- `[data-animate]` fade-in 애니메이션
+- ⚠️ **텍스트 색상과 배경색이 동일하지 않도록 주의하고 항상 충분한 대비를 유지하세요.**"""
 
 MODULAR_MODULE_PROMPT = """HTML 모듈 생성 전문가입니다. 각 모듈을 독립적인 HTML 조각으로 생성하세요.
 
@@ -278,6 +286,17 @@ MODULAR_MODULE_PROMPT = """HTML 모듈 생성 전문가입니다. 각 모듈을 
 - **script**: `<script>`~`</html>` (Vanilla JS만: scroll reveal, 메뉴 토글, FAQ)
 
 **⚠️ nav 모듈 규칙: 사용자가 "한 장", "소개 페이지"처럼 단순 페이지를 요청하면 nav 모듈을 생성하지 마세요. header 네비게이션 없이 바로 hero 섹션부터 시작하세요.**
+
+## ⚠️ 색상 대비 규칙 (매우 중요)
+- **텍스트 색상과 배경색이 동일하지 않도록 주의하세요. 항상 충분한 대비(contrast)를 유지하세요.**
+- 흰 배경(#fff, #faf9f6 등)에는 어두운 텍스트(#333, #1a1a2e, #2d3436 등) 사용
+- 어두운 배경(#0a0a0a, #1a1a2e 등)에는 밝은 텍스트(#fff, #f0f0f0 등) 사용
+- 같은 계열 색상을 배경과 텍스트에 동시에 사용하지 마세요
+
+## 📸 이미지 첨부 규칙
+- 사용자 요청에 "## 첨부된 이미지" 섹션의 URL이 포함되어 있으면, 반드시 그 이미지를 `<img src="...">`로 사용하세요.
+- 이미지 URL은 `/api/projects/.../assets/images/...` 형식입니다. 그대로 src 값에 사용하세요.
+- 사용자가 이미지를 추가해달라고 하면 업로드된 이미지만 사용하고 다른 이미지를 임의로 생성하지 마세요.
 
 ## 응답 형식
 ===MODULE_START===
@@ -388,6 +407,16 @@ nav 메뉴의 각 링크는 올바른 파일 경로로 연결되어야 합니다
 - **contact**: `<section id="contact">` 연락처
 - **footer**: `<footer>`~`</body>` (모든 페이지 공통 푸터, 메뉴 링크 포함)
 - **script**: `<script>`~`</html>` (Vanilla JS만: scroll reveal, 메뉴 토글, FAQ)
+
+## ⚠️ 색상 대비 규칙 (매우 중요)
+- **텍스트 색상과 배경색이 동일하지 않도록 주의하고 항상 충분한 대비를 유지하세요.**
+- 흰/밝은 배경에는 어두운 텍스트, 어두운 배경에는 밝은 텍스트 사용
+- 같은 계열 색상을 배경과 텍스트에 동시에 사용하지 마세요
+
+## 📸 이미지 첨부 규칙
+- 사용자 요청에 "## 첨부된 이미지" 섹션의 URL이 포함되어 있으면, 반드시 그 이미지를 `<img src="...">`로 사용하세요.
+- 이미지 URL은 `/api/projects/.../assets/images/...` 형식입니다. 그대로 src 값에 사용하세요.
+- 사용자가 이미지를 추가해달라고 하면 업로드된 이미지만 사용하고 다른 이미지를 임의로 생성하지 마세요.
 
 ## 응답 형식
 ===MODULE_START===
