@@ -109,6 +109,7 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 - 애니메이션: `[data-animate]` opacity 0 → visible 클래스로 fade-in
 - 그라데이션 텍스트 효과
 - box-shadow, transition 활용
+- **레이어/z-index 요청**: 사용자가 "맨 앞으로", "최상단", "앞에 배치", "위로 올려"라고 하면 `position: relative; z-index: 999` (또는 상황에 맞는 값)를 추가하세요. "뒤로 보내", "맨 뒤로"는 `z-index: -1` 또는 `z-index: 1`을 낮춰 설정하세요.
 
 ## JavaScript 규칙
 - IntersectionObserver로 scroll reveal 애니메이션
@@ -268,6 +269,7 @@ MODULAR_PLAN_PROMPT = """당신은 정적 HTML 페이지를 모듈 단위로 생
 - 카드, 버튼, 호버 효과
 - 반응형 (media query)
 - `[data-animate]` fade-in 애니메이션
+- **레이어/z-index 요청**: 사용자가 "맨 앞으로", "최상단", "앞에 배치"라고 하면 `position: relative; z-index: 999`를 추가. "뒤로 보내"는 `z-index`를 낮춤
 - ⚠️ **텍스트 색상과 배경색이 동일하지 않도록 주의하고 항상 충분한 대비를 유지하세요. 어두운 배경=밝은 텍스트, 밝은 배경=어두운 텍스트.**"""
 
 MODULAR_MODULE_PROMPT = """HTML 모듈 생성 전문가입니다. 각 모듈을 독립적인 HTML 조각으로 생성하세요.
