@@ -466,7 +466,8 @@ body {
   display: none;
   flex: 1;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .wizard-step.active {

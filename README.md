@@ -75,9 +75,57 @@ $env:N_GPU_LAYERS="-1"; python app.py
 ```
 > **GPU 자동 감지**: NVIDIA/AMD GPU를 자동으로 감지하여 가속을 활성화합니다.
 
-### macOS / Linux
+### macOS (Apple Silicon)
 
-#### 1. 빠른 실행 (권장)
+#### 1. 빠른 실행 (Metal 가속, 권장)
+
+```bash
+./run_mac.sh
+```
+
+가상환경 `.venv-mac` 생성 → llama-cpp-python을 **Metal**로 빌드 → 의존성 설치 → 앱 실행을 자동으로 진행합니다.
+
+> Apple Silicon(M1/M2/M3/M4)에서 Metal GPU 가속이 활성화됩니다.
+
+#### 2. 수동 실행
+
+```bash
+python3 -m venv .venv-mac
+source .venv-mac/bin/activate
+CMAKE_ARGS="-DGGML_METAL=on" pip install llama-cpp-python --upgrade --force-reinstall --no-cache-dir
+pip install -r requirements.txt
+python3 app.py
+```
+
+#### 3. 모델 다운로드
+```bash
+./download_model.sh
+```
+앱 실행 후 첫 화면에서 자동 다운로드도 가능합니다.
+
+#### 4. macOS 빌드
+
+```bash
+./build_mac.sh
+```
+
+Metal 가속이 포함된 단일 실행 파일로 빌드합니다. 결과: `dist/WebGenAI-Mac/WebGenAI-Mac`
+
+#### 5. 옵션
+```bash
+# 커스텀 모델 사용
+MODEL_PATH=/path/to/your/model.gguf python3 app.py
+
+# GPU 레이어 수 조정 (기본 -1: 전체)
+N_GPU_LAYERS=-1 python3 app.py
+
+# 컨텍스트 길이 축소 (VRAM 절약)
+N_CTX=8192 python3 app.py
+```
+
+### Linux (CPU / NVIDIA)
+
+#### 1. 빠른 실행
 
 ```bash
 ./run.sh
@@ -97,17 +145,18 @@ python3 app.py
 ```bash
 ./download_model.sh
 ```
-앱 실행 후 첫 화면에서 자동 다운로드도 가능합니다.
 
-#### 4. 옵션
+#### 4. NVIDIA GPU 가속 (CUDA)
+
 ```bash
-# 커스텀 모델 사용
-MODEL_PATH=/path/to/your/model.gguf python3 app.py
+# CUDA로 llama-cpp-python 재빌드
+CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python --upgrade --force-reinstall --no-cache-dir
 
-# GPU 가속
+# 실행
 N_GPU_LAYERS=-1 python3 app.py
 ```
-> **GPU 자동 감지**: NVIDIA/AMD GPU를 자동으로 감지하여 가속을 활성화합니다.
+
+> `N_GPU_LAYERS=-1`이 기본값이며, llama-cpp-python 설치 시 GPU 백엔드(CUDA/Metal/Vulkan)가 포함되어 있어야 GPU 가속이 동작합니다. 앱 실행 시 `llama_supports_gpu_offload()`로 지원 여부를 확인하고 로그에 출력합니다.
 
 ## 사용 방법
 

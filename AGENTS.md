@@ -173,6 +173,11 @@ build_amd.bat      # Windows (AMD Vulkan)
 - **디자인 템플릿 추가**: `templates/designs/`에 .md 파일 추가
 - **빌드 설정**: `WebGenAI.spec` 수정 후 `pyinstaller WebGenAI.spec`
 
+## Git 정책
+- 작업 완료 후 반드시 `git add -A && git commit -m "메시지" && git push` 순서로 푸시할 것
+- 커밋 메시지는 변경 내용을 간결하고 명확하게 영어로 작성
+- 작업이 완료되기 전에는 절대 커밋/푸시하지 않음
+
 ## 주의사항
 - 첫 실행 시 models/ 폴더에 GGUF 파일 필요 (웹 UI에서 다운로드 가능)
 - PyInstaller 빌드 시 `templates/`와 `static/` 폴더가 번들됨
