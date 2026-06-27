@@ -31,6 +31,10 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 - 이미지를 페이지에 추가해달라는 요청을 받으면 반드시 업로드된 이미지 URL을 사용하고, 절대 다른 이미지를 임의로 생성하지 마세요.
 - 이미지 URL 형식: `/api/projects/{id}/assets/images/{filename}`
 - `<img>` 태그에 `alt` 속성을 한국어로 추가하고, 필요시 `style`로 크기/위치를 조정하세요.
+- 이미지는 hero 섹션에 배치하세요. hero 영역에서 이미지가 잘 보이도록 CSS를 적용하세요:
+  - `.hero-image { width: 100%; max-width: 600px; height: auto; object-fit: contain; display: block; margin: 0 auto; }`
+  - 이미지가 hero 콘텐츠(제목, 설명) 아래나 옆에 위치하도록 하세요.
+  - 반응형: 모바일에서도 이미지가 화면을 넘지 않도록 max-width + height: auto 필수.
 
 ## 응답 형식
 1. 첫 줄: `===HTML_START===`
@@ -304,6 +308,9 @@ MODULAR_MODULE_PROMPT = """HTML 모듈 생성 전문가입니다. 각 모듈을 
 - 사용자 요청에 "## 첨부된 이미지" 섹션의 URL이 포함되어 있으면, 반드시 그 이미지를 `<img src="...">`로 사용하세요.
 - 이미지 URL은 `/api/projects/.../assets/images/...` 형식입니다. 그대로 src 값에 사용하세요.
 - 사용자가 이미지를 추가해달라고 하면 업로드된 이미지만 사용하고 다른 이미지를 임의로 생성하지 마세요.
+- hero 섹션에 이미지를 배치하고, 아래 CSS를 적용하세요:
+  - `.hero-image { width: 100%; max-width: 600px; height: auto; object-fit: contain; display: block; margin: 0 auto; }`
+  - 반응형: 모바일에서 이미지가 화면을 넘지 않도록 max-width + height: auto
 
 ## 응답 형식
 ===MODULE_START===
@@ -425,6 +432,9 @@ nav 메뉴의 각 링크는 올바른 파일 경로로 연결되어야 합니다
 - 사용자 요청에 "## 첨부된 이미지" 섹션의 URL이 포함되어 있으면, 반드시 그 이미지를 `<img src="...">`로 사용하세요.
 - 이미지 URL은 `/api/projects/.../assets/images/...` 형식입니다. 그대로 src 값에 사용하세요.
 - 사용자가 이미지를 추가해달라고 하면 업로드된 이미지만 사용하고 다른 이미지를 임의로 생성하지 마세요.
+- hero 섹션에 이미지를 배치하고, 아래 CSS를 적용하세요:
+  - `.hero-image { width: 100%; max-width: 600px; height: auto; object-fit: contain; display: block; margin: 0 auto; }`
+  - 반응형: 모바일에서 이미지가 화면을 넘지 않도록 max-width + height: auto
 
 ## 응답 형식
 ===MODULE_START===
