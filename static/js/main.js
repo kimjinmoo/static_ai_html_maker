@@ -877,9 +877,10 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
     currentPageName = d.name;
     currentPageIdx = d.index || 0;
     currentPageModules = {};
-    assistantDiv.innerHTML = `\ud83d\udcc4 \ud398\uc774\uc9c0 \uc0dd\uc131 \uc911: <strong>${d.index + 1}/${d.total}</strong> \u2014 ${d.file || d.name}`;
+    const pageCount = d.total || totalPages || 0;
+    assistantDiv.innerHTML = `\ud83d\udcc4 \ud398\uc774\uc9c0 \uc0dd\uc131 \uc911: <strong>${d.index + 1}/${pageCount}</strong> \u2014 ${d.file || d.name}`;
     scrollToBottom("messages");
-    updateMultiPageProgress(0, currentPageModules, d.total, totalPages, currentPageIdx, d.file || d.name);
+    updateMultiPageProgress(0, currentPageModules, 0, pageCount, currentPageIdx, d.file || d.name);
   });
 
   sse.on("page_complete", async (d) => {
