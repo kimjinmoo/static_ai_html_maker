@@ -1086,13 +1086,8 @@ async function sendMessage() {
     if (isFirstGeneration) {
       showGenerating(false);
       const assistantDiv = addMessage("messages", "assistant", "\u23f3 \ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc911...");
-      const strategy = await decideStrategy(message, false, false);
       const detected = detectMultiPage(message);
-      if (strategy === "modular" || detected === true) {
-        await sendMessageModular(message, assistantDiv, null, null, false, false, detected === null ? state.multiPageMode : detected);
-      } else {
-        await sendMessageDirect(message, assistantDiv);
-      }
+      await sendMessageModular(message, assistantDiv, null, null, false, false, detected === null ? state.multiPageMode : detected);
     } else {
       const strategy = await decideStrategy(message, !!savedHtml, !!state.selectedElement);
       if (strategy === "new_page" && savedHtml) {
