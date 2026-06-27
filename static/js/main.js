@@ -788,8 +788,6 @@ async function sendMessageDirect(message, assistantDiv) {
     template: state.selectedTemplate,
     design_content: state.selectedDesignContent,
     current_html: "",
-    current_css: "",
-    current_js: "",
     element_context: "",
     is_new_page: false,
     chat_only: false,
@@ -844,20 +842,6 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   if (!state.projectTitle) state.projectTitle = message.slice(0, 30) + (message.length > 30 ? "..." : "");
   await initProjectStructure(message);
 
-  // Read current CSS/JS files if project exists
-  let cssContent = "", jsContent = "";
-  if (state.currentProjectId) {
-    try {
-      const cr = await fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/css/style.css`);
-      const cd = await cr.json();
-      if (cd.content) cssContent = cd.content;
-    } catch (e) {}
-    try {
-      const jr = await fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/js/main.js`);
-      const jd = await jr.json();
-      if (jd.content) jsContent = jd.content;
-    } catch (e) {}
-  }
   const res = await fetch("/api/chat/stream/modular", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -869,8 +853,6 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
       design_content: state.selectedDesignContent,
       history: history || state.chatHistory.slice(0, -1),
       current_html: currentHtml || state.generatedHtml || "",
-      current_css: cssContent,
-      current_js: jsContent,
       is_new_page: isNewPage || false,
       multi_page: !!multiPage,
     }),
@@ -968,10 +950,6 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
         });
         // AI review: read back all pages and fix
         try {
-          const [cr, jr] = await Promise.all([
-            fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/css/style.css`).then(r => r.json()).catch(() => ({})),
-            fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/js/main.js`).then(r => r.json()).catch(() => ({})),
-          ]);
           const ih = allPagesHtml["index.html"] || "";
           const pageContents = {};
           for (const [path] of Object.entries(allPagesHtml)) {
@@ -983,7 +961,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
           if (ih) {
             const reviewRes = await fetch("/api/review_code", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ html: ih, css: cr.content || "", js: jr.content || "", pages: pageContents }),
+              body: JSON.stringify({ html: ih, pages: pageContents }),
             });
             const reviewData = await reviewRes.json();
             if (reviewData.html && reviewData.html !== ih) {
@@ -1084,13 +1062,8 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ path: "index.html", content: state.generatedHtml }),
         }).catch(() => {});
-        // AI review: read back all saved files and fix issues
+        // AI review: read back saved HTML and fix issues
         try {
-          const [cr, jr] = await Promise.all([
-            fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/css/style.css`).then(r => r.json()).catch(() => ({})),
-            fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/js/main.js`).then(r => r.json()).catch(() => ({})),
-          ]);
-          // Read all pages
           const pageFiles = Object.keys(state.multiPageHtmls || {});
           const pageContents = {};
           for (const pf of pageFiles) {
@@ -1099,7 +1072,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
           }
           const reviewRes = await fetch("/api/review_code", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ html: state.generatedHtml, css: cr.content || "", js: jr.content || "", pages: pageContents }),
+            body: JSON.stringify({ html: state.generatedHtml, pages: pageContents }),
           });
           const reviewData = await reviewRes.json();
           if (reviewData.html && reviewData.html !== state.generatedHtml) {
@@ -1296,7 +1269,7 @@ async function sendMessage() {
                 page_type: state.selectedType,
                 template: state.selectedTemplate,
                 design_content: state.selectedDesignContent,
-                current_html: (savedHtml || "").substring(0, 20000),
+                current_html: savedHtml || "",
                 current_css: "",
                 current_js: "",
                 element_context: elementContext,

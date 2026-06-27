@@ -135,15 +135,10 @@ def chat_stream_modular():
         context += f"\n\n## \ub514\uc790\uc778 \ud1a0\ud070\n{design_content}"
 
     if is_new_page and current_html:
-        context += f"\n\n## \ucc38\uace0: \ud604\uc7ac \uba54\uc778 \ud398\uc774\uc9c0 HTML (\ub514\uc790\uc778 \ud1b5\uc77c\uc6a9)\n```html\n{current_html[:20000]}\n```"
+        context += f"\n\n## \ucc38\uace0: \ud604\uc7ac \uba54\uc778 \ud398\uc774\uc9c0 HTML (\ub514\uc790\uc778 \ud1b5\uc77c\uc6a9)\n```html\n{current_html}\n```"
 
     if current_html and not is_new_page:
-        context += f"\n\n## \ud604\uc7ac \ud398\uc774\uc9c0 HTML (\uc218\uc815 \uae30\uc900)\n```html\n{current_html[:20000]}\n```"
-
-    if current_css:
-        context += f"\n\n## \ud604\uc7ac CSS (assets/css/style.css)\n```css\n{current_css[:10000]}\n```"
-    if current_js:
-        context += f"\n\n## \ud604\uc7ac JavaScript (assets/js/main.js)\n```javascript\n{current_js[:10000]}\n```"
+        context += f"\n\n## \ud604\uc7ac \ud398\uc774\uc9c0 HTML (\uc218\uc815 \uae30\uc900)\n```html\n{current_html}\n```"
 
     if multi_page:
         plan_messages = [
@@ -258,8 +253,6 @@ def api_decide_strategy():
 def api_review_code():
     data = request.json
     html = data.get("html", "")
-    css = data.get("css", "")
-    js = data.get("js", "")
 
     # Pre-clean
     html = strip_thinking(html)

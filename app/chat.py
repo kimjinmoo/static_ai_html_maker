@@ -34,12 +34,7 @@ def build_messages(data):
         context += f"\n\n## \ub514\uc790\uc778 \ud1a0\ud070\n{design_content[:500]}"
 
     if current_html:
-        html_trunc = current_html[:20000] + ("...(truncated)" if len(current_html) > 20000 else "")
-        context += f"\n\n\ud604\uc7ac \uba54\uc778 \ud398\uc774\uc9c0 HTML (\ub514\uc790\uc778 \ucc38\uace0\uc6a9, \uc77c\ubd80):\n{html_trunc}"
-        if current_css:
-            context += f"\n\n## \ud604\uc7ac CSS (assets/css/style.css)\n{current_css[:5000]}"
-        if current_js:
-            context += f"\n\n## \ud604\uc7ac JavaScript (assets/js/main.js)\n{current_js[:5000]}"
+        context += f"\n\n\ud604\uc7ac \uba54\uc778 \ud398\uc774\uc9c0 HTML (\ub514\uc790\uc778 \ucc38\uace0\uc6a9):\n{current_html}"
         if is_new_page:
             final_message = f"""{user_message}
 

@@ -386,14 +386,7 @@ def save_project_file(project_id):
         f.write(content)
     print(f"  [File] {abs_full}")
 
-    # Extract CSS/JS from HTML files to external files and update HTML
-    if filepath.endswith(".html"):
-        is_sub = filepath.startswith("pages") or filepath.count("/") > 0
-        updated = _extract_assets(project_dir, content, filepath)
-        if updated != content:
-            with open(abs_full, 'w', encoding='utf-8') as f:
-                f.write(updated)
-            print(f"  [Assets] Extracted CSS/JS from {filepath}")
+    # CSS/JS는 HTML에 인라인으로 유지 (분리하지 않음)
 
     if filepath.startswith("pages") and filepath.endswith(".html"):
         json_path = os.path.join(projects_dir, f"{project_id}.json")
@@ -448,16 +441,8 @@ def save_multipage_project(project_id):
         saved_files.append(file_path)
         print(f"  [File] {abs_full}")
 
-    # Extract CSS/JS from index.html to external files and update HTML
+    # CSS/JS는 HTML에 인라인으로 유지 (분리하지 않음)
     index_path = os.path.join(project_dir, "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, 'r', encoding='utf-8') as f:
-            index_html = f.read()
-        updated = _extract_assets(project_dir, index_html)
-        if updated != index_html:
-            with open(index_path, 'w', encoding='utf-8') as f:
-                f.write(updated)
-            print(f"  [Assets] Extracted CSS/JS from index.html")
 
     projects_dir_for_html = get_projects_dir()
     html_path = os.path.join(projects_dir_for_html, f"{project_id}.html")
