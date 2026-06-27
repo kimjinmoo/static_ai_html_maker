@@ -15,15 +15,13 @@ def _setup_windows_cuda_path():
     if sys.platform != "win32":
         return
     extra = []
-    # Check PyInstaller frozen path first
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         meipass = sys._MEIPASS
-        nvidia_dirs = [
-            os.path.join(meipass, 'llama_cpp', 'lib'),
-        ]
-        for d in nvidia_dirs:
-            if os.path.isdir(d) and d not in extra:
-                extra.append(d)
+        extra.append(meipass)
+        lib_dir = os.path.join(meipass, 'llama_cpp', 'lib')
+        if os.path.isdir(lib_dir):
+            extra.append(lib_dir)
+            os.environ["CUDA_PATH"] = lib_dir
     else:
         nvidia_base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".venv-nvidia", "Lib", "site-packages", "nvidia")
         if os.path.isdir(nvidia_base):

@@ -23,13 +23,14 @@ binaries = []
 # Collect llama_cpp and nvidia DLLs
 site_packages = site.getsitepackages()[0]
 
+# Collect llama_cpp DLLs
 llama_cpp_lib = os.path.join(site_packages, 'llama_cpp', 'lib')
 if os.path.exists(llama_cpp_lib):
     for f in os.listdir(llama_cpp_lib):
         if f.endswith('.dll'):
             binaries.append((os.path.join(llama_cpp_lib, f), 'llama_cpp/lib'))
 
-# Collect nvidia CUDA DLLs (put alongside llama.dll for PATH access)
+# Collect nvidia CUDA DLLs into the same directory as llama.dll
 nvidia_base = os.path.join(site_packages, 'nvidia')
 if os.path.exists(nvidia_base):
     for root, dirs, files in os.walk(nvidia_base):
