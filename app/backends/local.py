@@ -21,7 +21,6 @@ def _setup_windows_cuda_path():
         lib_dir = os.path.join(meipass, 'llama_cpp', 'lib')
         if os.path.isdir(lib_dir):
             extra.append(lib_dir)
-            os.environ["CUDA_PATH"] = lib_dir
     else:
         nvidia_base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".venv-nvidia", "Lib", "site-packages", "nvidia")
         if os.path.isdir(nvidia_base):
