@@ -19,6 +19,7 @@ const state = {
   projectTitle: "",
   selectedElement: null,
   reasoningEnabled: true,
+  directMode: true, // 단일 생성 기본값 활성화
   multiPageMode: false,
   multiPageHtmls: {},
   multiPageMenuItems: [],
@@ -280,6 +281,11 @@ function escapeHtml(text) {
 function toggleReasoning() {
   const cb = $("reasoning-toggle");
   state.reasoningEnabled = cb ? cb.checked : true;
+}
+
+function toggleDirectMode() {
+  const cb = $("direct-mode-toggle");
+  state.directMode = cb ? cb.checked : true;
 }
 
 function toggleReasoningBlock(id) {
@@ -807,10 +813,48 @@ async function sendMessageDirect(message, assistantDiv) {
   });
   const sse = createSSEReader(res);
   let fullContent = "";
+  let fullReasoning = "";
+  const uniqueId = "direct-" + Date.now();
 
-  sse.on("content", (t) => { fullContent += t.content || t.text || ""; });
+  assistantDiv.innerHTML = `
+    <div class="reasoning-block-wrapper hidden" id="reasoning-wrapper-${uniqueId}">
+      <div class="reasoning-header collapsed" onclick="toggleReasoningBlock('reasoning-content-${uniqueId}')">🧠 생각 과정</div>
+      <div class="reasoning-content hidden" id="reasoning-content-${uniqueId}"></div>
+    </div>
+    <div class="message-text-content" id="message-content-${uniqueId}">⏳ 생성 준비 중...</div>
+  `;
+
+  const textDiv = document.getElementById(`message-content-${uniqueId}`);
+  const reasoningWrapper = document.getElementById(`reasoning-wrapper-${uniqueId}`);
+  const reasoningDiv = document.getElementById(`reasoning-content-${uniqueId}`);
+
+  sse.on("reasoning", (t) => {
+    const rText = t.content || t.text || "";
+    if (rText) {
+      fullReasoning += rText;
+      if (state.reasoningEnabled) {
+        reasoningWrapper.classList.remove("hidden");
+        reasoningDiv.innerHTML = formatContent(fullReasoning);
+      }
+    }
+  });
+
+  sse.on("content", (t) => {
+    const cText = t.content || t.text || "";
+    if (cText) {
+      fullContent += cText;
+      const clean = stripThinkingBlock(fullContent);
+      if (clean && clean.trim().length > 0) {
+        textDiv.innerHTML = formatContent(clean);
+      } else {
+        textDiv.innerHTML = "⏳ 홈페이지 생성 중...";
+      }
+      scrollToBottom("messages");
+    }
+  });
+
   sse.on("stream_end", async () => {
-    if (!fullContent || fullContent.trim() === "") { throw new Error("AI \uc751\ub2f5\uc774 \ube44\uc5b4\uc788\uc2b5\ub2c8\ub2e4"); }
+    if (!fullContent || fullContent.trim() === "") { throw new Error("AI 응답이 비어있습니다"); }
     const extracted = extractHtmlMarker(fullContent) || extractHtml(fullContent);
     if (extracted) {
       state.generatedHtml = extracted;
@@ -834,8 +878,8 @@ async function sendMessageDirect(message, assistantDiv) {
       loadFileTree(state.currentProjectId);
     }
     hideGenerating();
-    assistantDiv.innerHTML = "<div>\u2705 \ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc644\ub8cc! \uc624\ub978\ucabd \ubbf8\ub9ac\ubcf4\uae30\ub97c \ud655\uc778\ud558\uc138\uc694.</div>";
-    state.chatHistory.push({ role: "assistant", content: "\ud648\ud398\uc774\uc9c0\ub97c \uc0dd\uc131\ud588\uc2b5\ub2c8\ub2e4." });
+    textDiv.innerHTML = "<div>✅ 홈페이지 생성 완료! 오른쪽 미리보기를 확인하세요.</div>";
+    state.chatHistory.push({ role: "assistant", content: "홈페이지를 생성했습니다." });
     saveProject();
     enableReviewBtn();
   });
@@ -1159,10 +1203,16 @@ async function sendMessage() {
 
   try {
     if (isFirstGeneration) {
-      showGenerating(false);
-      const assistantDiv = addMessage("messages", "assistant", "\u23f3 \ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc911...");
-      const detected = detectMultiPage(message);
-      await sendMessageModular(message, assistantDiv, null, null, false, false, detected === null ? state.multiPageMode : detected);
+      const isMulti = detectMultiPage(message) !== null ? detectMultiPage(message) : state.multiPageMode;
+      if (state.directMode && !isMulti) {
+        showGenerating(false);
+        const assistantDiv = addMessage("messages", "assistant", "⏳ 홈페이지 단일 생성 중...");
+        await sendMessageDirect(message, assistantDiv);
+      } else {
+        showGenerating(false);
+        const assistantDiv = addMessage("messages", "assistant", "⏳ 홈페이지 생성 중...");
+        await sendMessageModular(message, assistantDiv, null, null, false, false, isMulti);
+      }
     } else {
       const strategy = await decideStrategy(message, !!savedHtml, !!state.selectedElement);
       if (strategy === "new_page" && savedHtml) {
@@ -2079,6 +2129,11 @@ function init() {
     el.addEventListener("input", () => { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 200) + "px"; });
     el.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (el.id === "user-input") sendMessage(); } });
   });
+
+  // direct-mode-toggle 체크박스가 있으면 그 값으로 state.directMode 초기화
+  const dToggle = $("direct-mode-toggle");
+  if (dToggle) state.directMode = dToggle.checked;
+
   checkConnection();
   setInterval(checkConnection, 10000);
   loadProjects();
@@ -2100,6 +2155,7 @@ window.hideDownloadModal = hideDownloadModal;
 window.handleImageUpload = handleImageUpload;
 window.toggleReasoning = toggleReasoning;
 window.toggleReasoningBlock = toggleReasoningBlock;
+window.toggleDirectMode = toggleDirectMode;
 window.elementActionNewPage = elementActionNewPage;
 window.elementActionLink = elementActionLink;
 window.elementActionEdit = elementActionEdit;
