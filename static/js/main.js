@@ -1315,6 +1315,31 @@ async function sendMessageAuto(message) {
   el.typingIndicator.classList.add("hidden");
 }
 
+// ── Selected Element Bar ──
+function showSelectedElementBar(d) {
+  const bar = document.getElementById("selected-element-bar");
+  const label = document.getElementById("selected-element-label");
+  if (!bar || !label) return;
+  const tag = `<${d.tag}${d.id ? ` id="${d.id}"` : ""}${d.classes ? ` class="${d.classes}"` : ""}>`;
+  label.textContent = `\ud83c\udfaf ${tag} ${d.text ? `\u2014 "${d.text.slice(0, 30)}${d.text.length > 30 ? "..." : ""}"` : ""}`;
+  bar.classList.remove("hidden");
+}
+
+function hideSelectedElementBar() {
+  state.selectedElement = null;
+  el.userInput.placeholder = "\ud68c\uc0ac \uc18c\uac1c, \uc11c\ube44\uc2a4, \uac15\uc870 \ud3ec\uc778\ud2b8\ub97c \uc785\ub825\ud558\uc138\uc694...";
+  const bar = document.getElementById("selected-element-bar");
+  if (bar) bar.classList.add("hidden");
+}
+
+window.deselectElement = function () {
+  hideSelectedElementBar();
+  const iframe = document.getElementById("preview-frame");
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({ type: "deselect-element" }, "*");
+  }
+};
+
 // ── Element Actions ──
 function elementActionNewPage() {
   if (!state.selectedElement) return;
@@ -1381,11 +1406,12 @@ function linkActionMove() {
   state.pendingLinkTextValue = linkText;
   const msg = `"${linkText}" \ud398\uc774\uc9c0\ub97c \uc0dd\uc131\ud574\uc8fc\uc138\uc694. \ud604\uc7ac \ud504\ub85c\uc81d\ud2b8\uc640 \uc77c\uad00\ub41c \ub514\uc790\uc778\uc73c\ub85c \uc644\uc804\ud55c HTML \ud30c\uc77c\uc744 \uc0dd\uc131\ud558\uc138\uc694.`;
   addMessage("messages", "user", `\ud83d\udcc4 "${linkText}" \ud398\uc774\uc9c0 \uc0dd\uc131 \uc694\uccad`);
-  state.selectedElement = null;
+  hideSelectedElementBar();
   el.userInput.value = "";
   el.userInput.style.height = "auto";
   state.chatHistory.push({ role: "user", content: msg });
   hideLinkActionModal();
+  state.selectedElement = null;
   sendMessageAuto(msg);
 }
 function linkActionEdit() {
@@ -1455,6 +1481,7 @@ window.addEventListener("message", function (e) {
 
   if (d.type === "element-selected") {
     state.selectedElement = d;
+    showSelectedElementBar(d);
     el.userInput.placeholder = "\u270f\ufe0f \uc120\ud0dd\ud55c \uc694\uc18c\uc5d0 \ub300\ud574 \uc785\ub825\ud558\uc138\uc694...";
     el.userInput.focus();
     let info = `\ud83c\udfaf \uc694\uc18c\ub97c \uc120\ud0dd\ud588\uc2b5\ub2c8\ub2e4.\n\n${d.text ? `\ud604\uc7ac \ub0b4\uc6a9: "${d.text}"\n\n` : ""}\ubb34\uc5c7\uc744 \ud560\uae4c\uc694?\n- \ud83d\udcc4 **\uc2e0\uaddc \ud398\uc774\uc9c0 \uc0dd\uc131**: \uc774 \uc694\uc18c\ub97c \ub9c1\ud06c\ub85c \ub9cc\ub4e4\uc5b4 \uc0c8 \ud398\uc774\uc9c0 \uc5f0\uacb0\n- \ud83d\udd17 **\ub9c1\ud06c \ub9cc\ub4e4\uae30**: \uc774 \uc694\uc18c\ub97c \ud074\ub9ad \uac00\ub2a5\ud55c \ub9c1\ud06c\ub85c \ubcc0\uacbd\n- \u270f\ufe0f **\uc218\uc815**: \ub0b4\uc6a9\uc774\ub098 \uc2a4\ud0c0\uc77c \ubcc0\uacbd\n\uc704 \ub0b4\uc6a9\uc744 \ucc44\ud305\uc5d0 \uc785\ub825\ud574\uc8fc\uc138\uc694.`;
@@ -1462,13 +1489,14 @@ window.addEventListener("message", function (e) {
     scrollToBottom("messages");
   }
 
-  if (d.type === "element-deselected") { if (!state.pendingElementAction) { state.selectedElement = null; el.userInput.placeholder = "\ud68c\uc0ac \uc18c\uac1c, \uc11c\ube44\uc2a4, \uac15\uc870 \ud3ec\uc778\ud2b8\ub97c \uc785\ub825\ud558\uc138\uc694..."; } }
+  if (d.type === "element-deselected") { if (!state.pendingElementAction) { hideSelectedElementBar(); } }
 });
 
 // ── Regenerate ──
 function regenerate() {
   state.currentProjectId = null;
   state.projectTitle = "";
+  hideSelectedElementBar();
   state.selectedElement = null;
   state.chatHistory = [];
   state.generatedHtml = "";
@@ -1487,6 +1515,7 @@ function resetWizard() {
   state.selectedType = null;
   state.selectedTemplate = null;
   state.selectedDesignContent = "";
+  hideSelectedElementBar();
   state.selectedElement = null;
   state.chatHistory = [];
   state.generatedHtml = "";
