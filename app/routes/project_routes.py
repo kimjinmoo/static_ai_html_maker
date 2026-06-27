@@ -161,23 +161,6 @@ def save_project():
         dir_path = os.path.join(project_dir, subdir)
         os.makedirs(dir_path, exist_ok=True)
 
-    style_blocks = re.findall(r'<style[^>]*>([\s\S]*?)</style>', html, re.IGNORECASE)
-    script_blocks = re.findall(r'<script[^>]*>([\s\S]*?)</script>', html, re.IGNORECASE)
-
-    if style_blocks:
-        css_content = "\n".join(style_blocks)
-        css_path = os.path.join(project_dir, "assets", "css", "style.css")
-        with open(css_path, 'w', encoding='utf-8') as f:
-            f.write(css_content)
-        print(f"  [File] {css_path}")
-
-    if script_blocks:
-        js_content = "\n".join(script_blocks)
-        js_path = os.path.join(project_dir, "assets", "js", "main.js")
-        with open(js_path, 'w', encoding='utf-8') as f:
-            f.write(js_content)
-        print(f"  [File] {js_path}")
-
     index_path = os.path.join(project_dir, "index.html")
     with open(index_path, 'w', encoding='utf-8') as f:
         f.write(html)
