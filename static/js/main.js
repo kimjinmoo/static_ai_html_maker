@@ -1612,14 +1612,16 @@ function renderProjects(projects) {
   const icons = { company: "\ud83c\udfe2", landing: "\ud83c\udfaf", promotion: "\ud83d\udd25" };
   list.innerHTML = projects.map(p => {
     const active = p.id === state.currentProjectId ? "active" : "";
-    return `<div class="project-item ${active}" onclick="loadProject('${p.id}')"><div class="project-item-header"><span class="project-item-title">${p.title || "\uc81c\ubaa9 \uc5c6\uc74c"}</span><button class="project-item-delete" onclick="event.stopPropagation(); deleteProject('${p.id}')" title="\uc0ad\uc81c">\u2715</button></div><div class="project-item-meta"><span class="project-item-type">${icons[p.page_type] || ""} ${p.page_type || "-"}</span><span>${p.updated_at || p.created_at || ""}</span></div></div>`;
+    const disabled = !active && state.currentProjectId ? " disabled" : "";
+    const clickHandler = state.currentProjectId && p.id !== state.currentProjectId
+      ? `onclick="event.stopPropagation(); addMessage('messages', 'assistant', '\\u26a0\\ufe0f \\ud604\\uc7ac \\uc791\\uc5c5\\uc911\\uc778 \\ud504\\ub85c\\uc81d\\ud2b8\\uac00 \\uc788\\uc2b5\\ub2c8\\ub2e4. \\uba3c\\uc800 \\uc644\\ub8cc\\ud558\\uac70\\ub098 \\uc0c8\\ub85c\\uc6b4 \\ud648\\ud398\\uc774\\uc9c0\\ub97c \\uc0dd\\uc131\\ud574\\uc8fc\\uc138\\uc694.');"`
+      : `onclick="loadProject('${p.id}')"`;
+    return `<div class="project-item ${active}${disabled}" ${clickHandler}><div class="project-item-header"><span class="project-item-title">${p.title || "\uc81c\ubaa9 \uc5c6\uc74c"}</span><button class="project-item-delete" onclick="event.stopPropagation(); deleteProject('${p.id}')" title="\uc0ad\uc81c">\u2715</button></div><div class="project-item-meta"><span class="project-item-type">${icons[p.page_type] || ""} ${p.page_type || "-"}</span><span>${p.updated_at || p.created_at || ""}</span></div></div>`;
   }).join("");
 }
 
 async function loadProject(id) {
-  if (state.currentProjectId && state.currentProjectId !== id && !state.isGenerating) {
-    await saveProject();
-  }
+  if (state.currentProjectId && state.currentProjectId !== id) return;
   state.htmlHistory = [];
   try {
     const res = await fetch(`/api/projects/${id}?_=${Date.now()}`);

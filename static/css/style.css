@@ -256,6 +256,12 @@ body {
   background: rgba(99, 102, 241, 0.1);
 }
 
+.project-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .project-item-header {
   display: flex;
   justify-content: space-between;
