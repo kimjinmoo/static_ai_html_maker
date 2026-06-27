@@ -1529,6 +1529,7 @@ window.addEventListener("message", function (e) {
 
 // ── Regenerate ──
 function regenerate() {
+  state.htmlHistory = [];
   state.currentProjectId = null;
   state.projectTitle = "";
   hideSelectedElementBar();
@@ -1547,6 +1548,7 @@ function regenerate() {
 }
 
 function resetWizard() {
+  state.htmlHistory = [];
   state.selectedType = null;
   state.selectedTemplate = null;
   state.selectedDesignContent = "";
@@ -1615,6 +1617,10 @@ function renderProjects(projects) {
 }
 
 async function loadProject(id) {
+  if (state.currentProjectId && state.currentProjectId !== id && !state.isGenerating) {
+    await saveProject();
+  }
+  state.htmlHistory = [];
   try {
     const res = await fetch(`/api/projects/${id}?_=${Date.now()}`);
     const project = await res.json();
