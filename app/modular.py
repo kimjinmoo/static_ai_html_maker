@@ -3,8 +3,32 @@ import time
 import re
 
 from app.model import llama_chat_stream
-from app.prompts import MODULAR_PLAN_PROMPT, MODULAR_MODULE_PROMPT, MODULAR_MULTI_PAGE_MODULE_PROMPT
+from app.prompts import MODULAR_PLAN_PROMPT, MODULAR_MODULE_PROMPT, MODULAR_MULTI_PAGE_MODULE_PROMPT, REVIEW_PROMPT
 from app.utils import extract_module_html, strip_thinking, parse_multi_page_plan
+
+
+def _review_html(html_content):
+    """Send assembled HTML to AI for final review and fixes."""
+    if not html_content or len(html_content) < 50:
+        return html_content
+    messages = [
+        {"role": "system", "content": REVIEW_PROMPT},
+        {"role": "user", "content": f"Review and fix this HTML:\n\n```html\n{html_content[:15000]}\n```"}
+    ]
+    try:
+        result = ""
+        for token in llama_chat_stream(messages):
+            result += token
+        if "===HTML_START===" in result:
+            start = result.index("===HTML_START===") + 16
+            end = result.index("===HTML_END===") if "===HTML_END===" in result else len(result)
+            fixed = result[start:end].strip()
+            if fixed and len(fixed) > 50:
+                print(f"  [Review] HTML fixed: {len(fixed)} chars")
+                return fixed
+    except Exception as e:
+        print(f"  [Review] Error: {e}")
+    return html_content
 
 
 def generate_single_page(context, user_message, history):
@@ -96,6 +120,10 @@ def generate_single_page(context, user_message, history):
 
             has_doctype = '<!DOCTYPE html>' in assembled or '<!doctype html>' in assembled.lower()
             print(f"\n[Modular] Assembled: {len(assembled)} chars, DOCTYPE: {has_doctype}, modules: {len(generated_modules)}\n", flush=True)
+
+            # Phase 4: AI Review
+            yield f"data: {json.dumps({'type': 'plan_token', 'content': '\u270f\ufe0f HTML \uac80\ud1a0 \ubc0f \ubcf4\uc815 \uc911...\n'})}\n\n"
+            assembled = _review_html(assembled)
 
             yield f"data: {json.dumps({'type': 'done', 'html': assembled})}\n\n"
             print(f"[Modular] Total time: {time.time() - start_time:.1f}s\n")

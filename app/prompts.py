@@ -492,3 +492,18 @@ nav 메뉴의 각 링크는 올바른 파일 경로로 연결되어야 합니다
 ===MODULE_END===
 
 마크다운 코드블록 없이 마커 사이에 HTML만 출력하세요."""
+
+
+REVIEW_PROMPT = """You are an HTML quality assurance specialist. Review the following HTML page and fix any issues.
+
+## Check for these issues:
+1. Remove any leftover <thinking>, <reasoning>, <think> tags and their content
+2. Remove CSS or JavaScript that appears as plain text outside style/script tags
+3. Ensure <!DOCTYPE html> is present at the start
+4. Ensure <html>, <head>, <body> tags are properly structured
+5. Fix any unclosed tags or broken HTML
+
+## Output rules:
+- Return the COMPLETE fixed HTML
+- Wrap with ===HTML_START=== and ===HTML_END=== markers
+- No explanations, no code blocks"""

@@ -963,6 +963,30 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pages: allPagesHtml, title: state.projectTitle, page_type: state.selectedType, template: state.selectedTemplate, history: state.chatHistory, design_content: state.selectedDesignContent, menu_items: mpMenuItems }),
         });
+        // AI review: read back and fix index.html
+        try {
+          const [cr, jr] = await Promise.all([
+            fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/css/style.css`).then(r => r.json()).catch(() => ({})),
+            fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/js/main.js`).then(r => r.json()).catch(() => ({})),
+          ]);
+          const ih = allPagesHtml["index.html"] || "";
+          if (ih) {
+            const reviewRes = await fetch("/api/review_code", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ html: ih, css: cr.content || "", js: jr.content || "" }),
+            });
+            const reviewData = await reviewRes.json();
+            if (reviewData.html && reviewData.html !== ih) {
+              allPagesHtml["index.html"] = reviewData.html;
+              state.generatedHtml = reviewData.html;
+              updatePreview(reviewData.html, false);
+              await fetch(`/api/projects/${state.currentProjectId}/save_multipage`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pages: allPagesHtml, title: state.projectTitle, page_type: state.selectedType, template: state.selectedTemplate, history: state.chatHistory, design_content: state.selectedDesignContent, menu_items: mpMenuItems }),
+              }).catch(() => {});
+            }
+          }
+        } catch (e) { console.warn("Review skipped:", e); }
       } catch (e) { console.warn("Multi-page save failed:", e); }
       enableReviewBtn();
       loadFileTree(state.currentProjectId);
@@ -1049,6 +1073,26 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ path: "index.html", content: state.generatedHtml }),
         }).catch(() => {});
+        // AI review: read back saved files and fix issues
+        try {
+          const [cr, jr] = await Promise.all([
+            fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/css/style.css`).then(r => r.json()).catch(() => ({})),
+            fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/js/main.js`).then(r => r.json()).catch(() => ({})),
+          ]);
+          const reviewRes = await fetch("/api/review_code", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ html: state.generatedHtml, css: cr.content || "", js: jr.content || "" }),
+          });
+          const reviewData = await reviewRes.json();
+          if (reviewData.html && reviewData.html !== state.generatedHtml) {
+            state.generatedHtml = reviewData.html;
+            updatePreview(state.generatedHtml, false);
+            await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ path: "index.html", content: state.generatedHtml }),
+            }).catch(() => {});
+          }
+        } catch (e) { console.warn("Review skipped:", e); }
       }
       hideGenerating();
       assistantDiv.innerHTML = `\u2705 \ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc644\ub8cc! (${modules.length}\uac1c \ubaa8\ub4c8)`;

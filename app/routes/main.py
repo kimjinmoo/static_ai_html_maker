@@ -7,7 +7,7 @@ from app.chat import build_messages
 from app.modular import generate_single_page, generate_multi_page
 from app.thinking import filter_thinking_stream
 from app.strategies import classify_intent, decide_strategy
-from app.prompts import MODULAR_MULTI_PAGE_PLAN_PROMPT
+from app.prompts import MODULAR_MULTI_PAGE_PLAN_PROMPT, REVIEW_PROMPT
 from app.model import llama_chat_stream
 from app.utils import parse_multi_page_plan
 
@@ -252,6 +252,39 @@ def api_decide_strategy():
 
     strategy, reason, elapsed = decide_strategy(message, has_html, has_element)
     return jsonify({"strategy": strategy, "reason": reason, "elapsed": elapsed})
+
+
+@main_bp.route("/api/review_code", methods=["POST"])
+def api_review_code():
+    data = request.json
+    html = data.get("html", "")
+    css = data.get("css", "")
+    js = data.get("js", "")
+
+    message = "Review and fix these files:\n\n"
+    message += f"--- index.html ---\n```html\n{html[:8000]}\n```\n"
+    if css:
+        message += f"--- style.css ---\n```css\n{css[:4000]}\n```\n"
+    if js:
+        message += f"--- main.js ---\n```javascript\n{js[:4000]}\n```\n"
+    message += "\nFix all issues and return the corrected files."
+
+    try:
+        result = ""
+        for token in llama_chat_stream([
+            {"role": "system", "content": REVIEW_PROMPT},
+            {"role": "user", "content": message},
+        ]):
+            result += token
+        if "===HTML_START===" in result:
+            start = result.index("===HTML_START===") + 16
+            end = result.index("===HTML_END===") if "===HTML_END===" in result else len(result)
+            fixed = result[start:end].strip()
+            if fixed and len(fixed) > 50:
+                return jsonify({"html": fixed, "original": html})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"html": html})
 
 
 @main_bp.route("/api/generate_preview", methods=["POST"])
