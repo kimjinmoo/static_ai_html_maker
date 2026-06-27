@@ -30,8 +30,14 @@ def generate_single_page(context, user_message, history):
 
             modules = _parse_modules(plan_content)
             if not modules:
-                yield f"data: {json.dumps({'type': 'error', 'content': 'module parsing failed'})}\n\n"
-                return
+                modules = [
+                    {"id": "head", "description": "meta, title, font, CSS variables, global style"},
+                    {"id": "hero", "description": "full-screen hero section"},
+                    {"id": "content", "description": "main content section"},
+                    {"id": "footer", "description": "footer"},
+                    {"id": "script", "description": "JavaScript"},
+                ]
+                yield f"data: {json.dumps({'type': 'plan_token', 'content': '\n[default modules]\n'})}\n\n"
 
             print(f"\n[Modular] Plan: {len(modules)} modules")
             yield f"data: {json.dumps({'type': 'plan', 'modules': modules})}\n\n"

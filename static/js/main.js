@@ -853,9 +853,12 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   let mpMenuItems = [];
 
   sse.on("error", (d) => {
+    const msg = d.content || d.error || "\uc624\ub958";
     if (el.generatingStatusText) {
-      el.generatingStatusText.textContent = `\u26a0\ufe0f ${d.content || d.error || "\uc624\ub958"}`;
+      el.generatingStatusText.textContent = `\u26a0\ufe0f ${msg}`;
     }
+    assistantDiv.innerHTML = `\u26a0\ufe0f ${msg}`;
+    scrollToBottom("messages");
   });
 
   sse.on("multi_plan", (d) => {
