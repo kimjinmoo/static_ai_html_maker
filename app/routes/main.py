@@ -9,7 +9,7 @@ from app.thinking import filter_thinking_stream
 from app.strategies import classify_intent, decide_strategy
 from app.prompts import MODULAR_MULTI_PAGE_PLAN_PROMPT
 from app.model import llama_chat_stream
-from app.utils import parse_multi_page_plan
+from app.utils import parse_multi_page_plan, strip_thinking
 
 
 main_bp = Blueprint("main", __name__)
@@ -289,8 +289,10 @@ def api_review_code():
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             result = "\n".join(lines).strip()
-        if result and len(result) > 50 and result != html:
-            return jsonify({"html": result, "original": html})
+        if result and len(result) > 50:
+            result = strip_thinking(result)
+            if result != html:
+                return jsonify({"html": result, "original": html})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     return jsonify({"html": html})

@@ -33,9 +33,11 @@ def _review_html(html_content):
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             result = "\n".join(lines).strip()
-        if result and len(result) > 50 and result != html_content:
-            print(f"  [Review] Fixed: {len(html_content)} -> {len(result)} chars")
-            return result
+        if result and len(result) > 50:
+            result = strip_thinking(result)
+            if result != html_content:
+                print(f"  [Review] Fixed: {len(html_content)} -> {len(result)} chars")
+                return result
     except Exception as e:
         print(f"  [Review] Error: {e}")
     return html_content

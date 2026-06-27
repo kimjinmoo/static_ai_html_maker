@@ -4,10 +4,23 @@ import re
 def strip_thinking(text):
     if not text:
         return text
-    text = re.sub(r'<thinking>[\s\S]*?</thinking>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'<reasoning>[\s\S]*?</reasoning>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'<think>[\s\S]*?</think>', '', text)
-    for marker in ["Thinking Process:", "생각 과정:"]:
+    # Remove all think/reasoning tags and their content
+    text = re.sub(r'<think[^>]*>[\s\S]*?</think>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<thinking[^>]*>[\s\S]*?</thinking>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<reasoning[^>]*>[\s\S]*?</reasoning>', '', text, flags=re.IGNORECASE)
+    # Remove unclosed think/reasoning tags and everything after
+    for tag in ['<think', '<thinking', '<reasoning', '</think>', '</thinking>', '</reasoning>']:
+        while True:
+            idx = text.find(tag)
+            if idx == -1:
+                break
+            # Find the next newline or end of text to remove just this tag line
+            line_end = text.find('\n', idx)
+            if line_end == -1:
+                text = text[:idx]
+            else:
+                text = text[:idx] + text[line_end + 1:]
+    for marker in ["Thinking Process:", "생각 과정:", "Reasoning:", "reasoning:"]:
         idx = text.find(marker)
         while idx != -1:
             line_end = text.find('\n', idx)
