@@ -246,6 +246,32 @@ def delete_project(project_id):
     return jsonify({"status": "success"})
 
 
+@project_bp.route("/api/projects/<project_id>/delete_file", methods=["POST"])
+def delete_project_file(project_id):
+    data = request.json or {}
+    filepath = data.get("path", "").replace("/", os.sep)
+
+    if not filepath:
+        return jsonify({"error": "파일 경로가 필요합니다."}), 400
+
+    projects_dir = get_projects_dir()
+    project_dir = os.path.join(projects_dir, project_id)
+    file_path = os.path.join(project_dir, filepath)
+    abs_path = os.path.abspath(file_path)
+    abs_proj = os.path.abspath(project_dir)
+
+    if not abs_path.startswith(abs_proj):
+        return jsonify({"error": "잘못된 경로입니다."}), 400
+    if not os.path.exists(abs_path):
+        return jsonify({"error": "파일을 찾을 수 없습니다."}), 404
+    if os.path.isdir(abs_path):
+        return jsonify({"error": "디렉토리는 삭제할 수 없습니다."}), 400
+
+    os.remove(abs_path)
+    print(f"  [DelFile] {filepath}")
+    return jsonify({"status": "success"})
+
+
 @project_bp.route("/api/projects/<project_id>/tree", methods=["GET"])
 def project_tree(project_id):
     projects_dir = get_projects_dir()

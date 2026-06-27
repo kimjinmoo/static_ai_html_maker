@@ -1641,7 +1641,8 @@ function renderTreeNode(node, depth) {
     const active = node.path === state.currentViewPath ? " active" : "";
     const pending = node.pending ? " pending" : "";
     const icon = node.path.endsWith(".html") ? "\ud83c\udf10" : node.ext === ".css" ? "\ud83c\udfa8" : node.ext === ".js" ? "\ud83d\udce6" : "\ud83d\udcc4";
-    return `<div class="tree-item file${active}${pending}" style="padding-left: ${depth * 16 + 8}px;" onclick="loadFileInPreview('${node.path}')"><span class="tree-icon">${icon}</span><span class="tree-name">${node.name}</span>${node.pending ? '<span class="tree-badge pending">\uc0dd\uc131 \uc911</span>' : ""}</div>`;
+    const delBtn = node.pending ? "" : `<span class="tree-del" onclick="event.stopPropagation();deleteFile('${node.path}')" title="삭제">&times;</span>`;
+    return `<div class="tree-item file${active}${pending}" style="padding-left: ${depth * 16 + 8}px;" onclick="loadFileInPreview('${node.path}')"><span class="tree-icon">${icon}</span><span class="tree-name">${node.name}</span>${node.pending ? '<span class="tree-badge pending">\uc0dd\uc131 \uc911</span>' : ""}${delBtn}</div>`;
   }
 }
 
@@ -1656,6 +1657,22 @@ window.toggleTreeNode = function (path) {
   if (!state.treeCollapsed) state.treeCollapsed = {};
   state.treeCollapsed[path] = !state.treeCollapsed[path];
   loadFileTree(state.currentProjectId);
+};
+
+window.deleteFile = function (path) {
+  if (!confirm(`"${path}" 파일을 삭제하시겠습니까?`)) return;
+  fetch(`/api/projects/${state.currentProjectId}/delete_file`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: path })
+  }).then(r => r.json()).then(res => {
+    if (res.error) { alert(res.error); return; }
+    if (path === state.currentViewPath) {
+      state.currentViewPath = null;
+      el.filePreview.innerHTML = "";
+    }
+    loadFileTree(state.currentProjectId);
+  }).catch(e => alert("삭제 실패: " + e.message));
 };
 
 function toggleFileTree() {

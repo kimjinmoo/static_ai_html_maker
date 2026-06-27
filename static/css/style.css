@@ -415,6 +415,31 @@ body {
 .tree-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+}
+
+.tree-del {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 3px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.tree-item.file:hover .tree-del {
+  opacity: 0.6;
+}
+
+.tree-del:hover {
+  opacity: 1 !important;
+  background: rgba(255, 71, 87, 0.2);
+  color: #ff4757;
 }
 
 .tree-badge {
