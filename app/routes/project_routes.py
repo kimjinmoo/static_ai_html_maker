@@ -16,19 +16,39 @@ project_bp = Blueprint("project", __name__)
 
 
 def _extract_assets(project_dir, html):
-    """Extract inline CSS/JS from HTML to separate files and update the HTML with links."""
-    css_match = re.findall(r'<style[^>]*>([\s\S]*?)</style>', html, re.IGNORECASE)
-    js_match = re.findall(r'<script[^>]*>([\s\S]*?)</script>', html, re.IGNORECASE)
-    if css_match:
-        css_dir = os.path.join(project_dir, "assets", "css")
-        os.makedirs(css_dir, exist_ok=True)
+    """Extract inline CSS/JS from HTML to separate files and return HTML with external links."""
+    css_dir = os.path.join(project_dir, "assets", "css")
+    js_dir = os.path.join(project_dir, "assets", "js")
+    os.makedirs(css_dir, exist_ok=True)
+    os.makedirs(js_dir, exist_ok=True)
+
+    css_blocks = re.findall(r'<style[^>]*>([\s\S]*?)</style>', html, re.IGNORECASE)
+    if css_blocks:
+        combined = "\n".join(css_blocks)
         with open(os.path.join(css_dir, "style.css"), 'w', encoding='utf-8') as f:
-            f.write("\n".join(css_match))
-    if js_match:
-        js_dir = os.path.join(project_dir, "assets", "js")
-        os.makedirs(js_dir, exist_ok=True)
+            f.write(combined)
+        html = re.sub(r'<style[^>]*>[\s\S]*?</style>\s*', '', html, flags=re.IGNORECASE)
+        head_close = html.rfind('</head>')
+        if head_close != -1:
+            link_tag = '    <link rel="stylesheet" href="assets/css/style.css">\n'
+            html = html[:head_close] + link_tag + html[head_close:]
+
+    js_blocks = []
+    for m in re.finditer(r'<script[^>]*>(.*?)</script>', html, re.IGNORECASE | re.DOTALL):
+        src = re.search(r'src\s*=\s*["\']([^"\']+)["\']', m.group(0))
+        if not src:
+            js_blocks.append(m.group(1))
+    if js_blocks:
+        combined = "\n".join(js_blocks)
         with open(os.path.join(js_dir, "main.js"), 'w', encoding='utf-8') as f:
-            f.write("\n".join(js_match))
+            f.write(combined)
+        html = re.sub(r'<script(?!\s+src)[^>]*>[\s\S]*?</script>\s*', '', html, flags=re.IGNORECASE)
+        body_end = html.rfind('</body>')
+        if body_end != -1:
+            script_tag = '    <script src="assets/js/main.js"></script>\n'
+            html = html[:body_end] + script_tag + html[body_end:]
+
+    return html
 
 
 @project_bp.route("/api/projects/init", methods=["POST"])
@@ -362,9 +382,13 @@ def save_project_file(project_id):
         f.write(content)
     print(f"  [File] {abs_full}")
 
-    # Extract CSS/JS from index.html to external files
+    # Extract CSS/JS from index.html to external files and update HTML
     if filepath == "index.html":
-        _extract_assets(project_dir, content)
+        updated = _extract_assets(project_dir, content)
+        if updated != content:
+            with open(abs_full, 'w', encoding='utf-8') as f:
+                f.write(updated)
+            print(f"  [Assets] Extracted CSS/JS to assets/")
 
     if filepath.startswith("pages") and filepath.endswith(".html"):
         json_path = os.path.join(projects_dir, f"{project_id}.json")
@@ -419,22 +443,16 @@ def save_multipage_project(project_id):
         saved_files.append(file_path)
         print(f"  [File] {abs_full}")
 
-    index_html = pages.get("index.html", "")
-    if index_html:
-        style_blocks = re.findall(r'<style[^>]*>([\s\S]*?)</style>', index_html, re.IGNORECASE)
-        script_blocks = re.findall(r'<script[^>]*>([\s\S]*?)</script>', index_html, re.IGNORECASE)
-
-        if style_blocks:
-            css_content = "\n".join(style_blocks)
-            css_path = os.path.join(project_dir, "assets", "css", "style.css")
-            with open(css_path, 'w', encoding='utf-8') as f:
-                f.write(css_content)
-
-        if script_blocks:
-            js_content = "\n".join(script_blocks)
-            js_path = os.path.join(project_dir, "assets", "js", "main.js")
-            with open(js_path, 'w', encoding='utf-8') as f:
-                f.write(js_content)
+    # Extract CSS/JS from index.html to external files and update HTML
+    index_path = os.path.join(project_dir, "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, 'r', encoding='utf-8') as f:
+            index_html = f.read()
+        updated = _extract_assets(project_dir, index_html)
+        if updated != index_html:
+            with open(index_path, 'w', encoding='utf-8') as f:
+                f.write(updated)
+            print(f"  [Assets] Extracted CSS/JS from index.html")
 
     projects_dir_for_html = get_projects_dir()
     html_path = os.path.join(projects_dir_for_html, f"{project_id}.html")
