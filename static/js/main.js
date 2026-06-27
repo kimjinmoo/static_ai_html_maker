@@ -1024,8 +1024,22 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
 
   sse.on("plan", (d) => {
     modules = d.modules || [];
+    state.generatingFiles = { "index.html": true, "assets/css/style.css": true, "assets/js/main.js": true };
     assistantDiv.innerHTML = `\ud83d\udccb \ubaa8\ub4c8 \uacc4\ud68d \uc644\ub8cc (${modules.length}\uac1c \ubaa8\ub4c8)`;
     scrollToBottom("messages");
+    // Create empty CSS/JS files immediately
+    if (state.currentProjectId) {
+      Promise.all([
+        fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: "assets/css/style.css", content: "/* style.css */\n" }),
+        }),
+        fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: "assets/js/main.js", content: "// main.js\n" }),
+        }),
+      ]).then(() => loadFileTree(state.currentProjectId)).catch(() => {});
+    }
     updateModularProgress([], 0, modules);
     updateProgressBar(5);
   });
