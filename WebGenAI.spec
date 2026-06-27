@@ -38,7 +38,7 @@ if os.path.exists(nvidia_base):
                 binaries.append((os.path.join(root, f), 'llama_cpp/lib'))
 
 a = Analysis(
-    ['app.py'],
+    ['run_desktop.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,

@@ -1,12 +1,43 @@
 import os
 import sys
-import logging
+import builtins
 from flask import Flask
 
 from app.routes.main import main_bp
 from app.routes.model_routes import model_bp
 from app.routes.project_routes import project_bp
 from app.routes.design_routes import design_bp
+
+# Patch print to always go to stderr + log file
+_log_file = None
+_original_print = builtins.print
+
+
+def _ensure_log():
+    global _log_file
+    if _log_file is None:
+        try:
+            d = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+            os.makedirs(d, exist_ok=True)
+            _log_file = open(os.path.join(d, "webgen.log"), "a", encoding="utf-8")
+        except Exception:
+            pass
+
+
+def _patched_print(*args, **kwargs):
+    kwargs.setdefault("file", sys.stderr)
+    kwargs.setdefault("flush", True)
+    _original_print(*args, **kwargs)
+    _ensure_log()
+    if _log_file:
+        try:
+            _log_file.write(" ".join(str(a) for a in args) + "\n")
+            _log_file.flush()
+        except Exception:
+            pass
+
+
+builtins.print = _patched_print
 
 
 def create_app():
@@ -17,10 +48,6 @@ def create_app():
         static_folder=os.path.join(_root, "static"),
         static_url_path="/static",
     )
-
-    # Ensure all console output is visible by redirecting print to stderr
-    if not flask_app.debug:
-        sys.stdout = sys.stderr
 
     flask_app.register_blueprint(main_bp)
     flask_app.register_blueprint(model_bp)
