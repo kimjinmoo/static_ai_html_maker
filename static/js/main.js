@@ -869,6 +869,17 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
     state.multiPageMenuItems = mpMenuItems;
     assistantDiv.innerHTML = `\ud83d\udccb \uba40\ud2f0\ud398\uc774\uc9c0 \uacc4\ud68d \uc644\ub8cc (${totalPages}\uac1c \ud398\uc774\uc9c0)<br><span style="color: var(--text-muted); font-size: 0.85rem;">\uba54\ub274: ${mpMenuItems.join(" | ")}</span>`;
     scrollToBottom("messages");
+    // Create all page placeholder files immediately
+    if (state.currentProjectId) {
+      (d.pages || []).forEach(pg => {
+        const ph = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${pg.title || pg.name || ''}</title></head><body><p>${pg.file || pg.name} \uc0dd\uc131 \uc911...</p></body></html>`;
+        fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: pg.file, content: ph }),
+        }).catch(() => {});
+      });
+      loadFileTree(state.currentProjectId);
+    }
     updateMultiPageProgress(0, {}, 0, totalPages, 0, (d.pages?.[0] || {}).name || "");
     updateProgressBar(5);
   });
