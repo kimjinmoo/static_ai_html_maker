@@ -3,7 +3,7 @@ import time
 import re
 
 from app.model import llama_chat_stream
-from app.prompts import MODULAR_PLAN_PROMPT, MODULAR_MODULE_PROMPT, MODULAR_MULTI_PAGE_MODULE_PROMPT, REVIEW_PROMPT
+from app.prompts import MODULAR_PLAN_PROMPT, MODULAR_MODULE_PROMPT, MODULAR_MULTI_PAGE_MODULE_PROMPT
 from app.utils import extract_module_html, strip_thinking, parse_multi_page_plan
 
 
@@ -11,21 +11,31 @@ def _review_html(html_content):
     """Send assembled HTML to AI for final review and fixes."""
     if not html_content or len(html_content) < 50:
         return html_content
+    # Quick cleanup before AI review
+    cleaned = strip_thinking(html_content)
+    if cleaned != html_content:
+        print(f"  [Review] Pre-clean removed thinking tags: {len(html_content)} -> {len(cleaned)} chars")
+        html_content = cleaned
     messages = [
-        {"role": "system", "content": REVIEW_PROMPT},
-        {"role": "user", "content": f"Review and fix this HTML:\n\n```html\n{html_content[:15000]}\n```"}
+        {"role": "system", "content": "Fix the HTML. Remove any <thinking>, <reasoning>, <think> tags. Fix broken tags. Return ONLY the fixed HTML, no markers, no code blocks."},
+        {"role": "user", "content": html_content[:12000]}
     ]
     try:
         result = ""
         for token in llama_chat_stream(messages):
             result += token
-        if "===HTML_START===" in result:
-            start = result.index("===HTML_START===") + 16
-            end = result.index("===HTML_END===") if "===HTML_END===" in result else len(result)
-            fixed = result[start:end].strip()
-            if fixed and len(fixed) > 50:
-                print(f"  [Review] HTML fixed: {len(fixed)} chars")
-                return fixed
+        result = result.strip()
+        # Strip code fences if present
+        if result.startswith("```"):
+            lines = result.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            result = "\n".join(lines).strip()
+        if result and len(result) > 50 and result != html_content:
+            print(f"  [Review] Fixed: {len(html_content)} -> {len(result)} chars")
+            return result
     except Exception as e:
         print(f"  [Review] Error: {e}")
     return html_content

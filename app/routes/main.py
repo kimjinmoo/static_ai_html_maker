@@ -7,7 +7,7 @@ from app.chat import build_messages
 from app.modular import generate_single_page, generate_multi_page
 from app.thinking import filter_thinking_stream
 from app.strategies import classify_intent, decide_strategy
-from app.prompts import MODULAR_MULTI_PAGE_PLAN_PROMPT, REVIEW_PROMPT
+from app.prompts import MODULAR_MULTI_PAGE_PLAN_PROMPT
 from app.model import llama_chat_stream
 from app.utils import parse_multi_page_plan
 
@@ -276,16 +276,21 @@ def api_review_code():
     try:
         result = ""
         for token in llama_chat_stream([
-            {"role": "system", "content": REVIEW_PROMPT},
-            {"role": "user", "content": message},
+            {"role": "system", "content": "Fix the HTML. Remove <thinking>, <reasoning> tags. Fix broken tags. Return ONLY the fixed HTML, no markers, no code blocks, no explanation."},
+            {"role": "user", "content": html[:12000]},
         ]):
             result += token
-        if "===HTML_START===" in result:
-            start = result.index("===HTML_START===") + 16
-            end = result.index("===HTML_END===") if "===HTML_END===" in result else len(result)
-            fixed = result[start:end].strip()
-            if fixed and len(fixed) > 50:
-                return jsonify({"html": fixed, "original": html})
+        result = result.strip()
+        # Strip code fences
+        if result.startswith("```"):
+            lines = result.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            result = "\n".join(lines).strip()
+        if result and len(result) > 50 and result != html:
+            return jsonify({"html": result, "original": html})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     return jsonify({"html": html})
