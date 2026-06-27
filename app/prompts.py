@@ -212,69 +212,67 @@ STRATEGY_PROMPT = """You are an AI that analyzes user requests and selects the b
 Respond with ONLY valid JSON. No other text, no explanation:
 {"strategy": "modular"|"direct"|"edit"|"chat", "reason": "short reason in English or Korean"}"""
 
-MODULAR_PLAN_PROMPT = """당신은 정적 HTML 페이지를 모듈 단위로 생성하는 AI 개발자입니다.
+MODULAR_PLAN_PROMPT = """You are an AI that plans HTML page structure by analyzing user requests.
 
-## ⛔ 서버 기능 금지
-- 게시판, 댓글, 로그인/회원가입, 검색, DB 연동 등 **서버가 필요한 기능은 절대 생성하지 마세요**
-- 정적 HTML/CSS/JS로만 구현 가능한 기능만 생성하세요
+## Task
+1. Read the user's request carefully
+2. Analyze what sections/content the user actually wants
+3. Create a module list that matches ONLY what the user requested
+4. Output the module list in the required format
 
-## 작업
-1. 먼저 생성할 모듈 목록을 계획하세요
-2. 각 모듈을 하나씩 HTML 조각으로 생성하세요
-
-## 응답 형식: 계획 단계
-다음 형식으로 모듈 목록만 출력하세요:
+## Response Format
+Only output the plan with these markers:
 ===PLAN_START===
-1. [모듈명] - [설명]
-2. [모듈명] - [설명]
+1. [module_name] - [description]
+2. [module_name] - [description]
 ...
 ===PLAN_END===
 
-## 모듈 계획 가이드
-- 각 모듈은 작은 단위 (50~150줄)
-- 페이지 유형에 따라 적절한 모듈 구성
+## Module Selection Rules (critical)
+- **ONLY include modules for content the user explicitly requested**
+- DO NOT add modules for sections the user didn't mention
+- Minimal modules = better. Start with just what's asked for.
+- **head** (meta, fonts, CSS variables) + **script** (JavaScript) are always required
+- **footer** is always required
+- **nav** is only needed if the user mentions navigation, menu, or multiple pages
+- **hero** (main visual section with title/description) is usually needed
+- Add content sections based on what the user described
 
-### 회사 사이트 (company)
-1. head - meta, title, font, CSS 변수, 전역 스타일
-2. nav - 고정 네비게이션 바
-3. hero - 풀스크린 히어로 섹션
-4. about - 회사 소개 섹션
-5. services - 서비스 카드 섹션
-6. team - 팀 소개 섹션
-7. stats - 통계 섹션
-8. contact - 연락처 섹션
-9. footer - 푸터
-10. script - JavaScript
+## Examples of proper module selection:
 
-### 랜딩 페이지 (landing)
-1. head - meta, title, font, CSS 변수, 전역 스타일
-2. nav - 고정 네비게이션 바
-3. hero - 풀스크린 히어로
-4. features - 핵심 기능 카드
-5. how-it-works - 3단계 프로세스
-6. testimonials - 고객 후기
-7. pricing - 가격표
-8. faq - 어코디언 FAQ
-9. cta - 최종 CTA
-10. footer - 푸터
-11. script - JavaScript
+If user says "회사 소개 페이지 만들어줘" → plan is:
+===PLAN_START===
+1. head - meta, title, font, CSS variables, global styles
+2. hero - hero section with company name and tagline
+3. about - company introduction with mission/vision
+4. footer - footer with contact info
+5. script - JavaScript
+===PLAN_END===
 
-### 프로모션 페이지 (promotion)
-1. head - meta, title, font, CSS 변수, 전역 스타일
-2. nav - 고정 네비게이션 바
-3. hero - 프로모션 히어로 + 카운트다운
-4. offer - 혜택 설명
-5. features - 제품 하이라이트
-6. testimonials - 고객 후기
-7. guarantee - 환불/보장 정책
-8. cta - 최종 CTA
-9. footer - 푸터
-10. script - JavaScript
+If user says "제품 판매 랜딩페이지, 기능과 후기 포함" → plan is:
+===PLAN_START===
+1. head - meta, title, font, CSS variables
+2. hero - product hero with headline and CTA
+3. features - product features grid
+4. testimonials - customer reviews
+5. footer - footer
+6. script - JavaScript
+===PLAN_END===
 
-## 디자인 템플릿
-- **Minimal Clean**: Inter 폰트, 흰 배경(#ffffff), 플랫 컬러, 여백 중심
-- **Bold Modern**: Poppins 폰트, 어두운 배경(#0a0a0a), 그라데이션, 글로우 효과
-- **Elegant Warm**: Playfair Display + Source Sans 3, 오프화이트(#faf9f6), 골드 액센트
+If user says "프로모션 페이지, 할인 이벤트, 카운트다운" → plan is:
+===PLAN_START===
+1. head - meta, title, font, CSS variables
+2. hero - promotion hero with countdown timer
+3. offer - discount offer details
+4. cta - call-to-action button
+5. footer - footer
+6. script - JavaScript
+===PLAN_END===
+
+## Design Templates
+- **Minimal Clean**: Inter font, white bg(#ffffff), flat colors
+- **Bold Modern**: Poppins font, dark bg(#0a0a0a), gradients, glow
+- **Elegant Warm**: Playfair Display + Source Sans 3, off-white(#faf9f6), gold accents
 
 ## CSS 규칙
 - **⚠️ 모든 CSS는 반드시 `<style>` 태그 안에 넣으세요. CSS를 `<style>` 밖에 텍스트로 출력하면 안 됩니다.**
@@ -342,86 +340,90 @@ MODULAR_MODULE_PROMPT = """HTML 모듈 생성 전문가입니다. 각 모듈을 
 
 마크다운 코드블록 없이 마커 사이에 HTML만 출력하세요."""
 
-MODULAR_MULTI_PAGE_PLAN_PROMPT = """당신은 정적 HTML 멀티페이지 사이트를 생성하는 AI 개발자입니다.
+MODULAR_MULTI_PAGE_PLAN_PROMPT = """You are an AI that plans multi-page HTML site structure by analyzing user requests.
 
-## ⛔ 서버 기능 금지
-- 게시판, 댓글, 로그인/회원가입, 검색, DB 연동 등 **서버가 필요한 기능은 절대 생성하지 마세요**
-- 정적 HTML/CSS/JS로만 구현 가능한 기능만 계획에 포함하세요
-- 페이지 계획 시 서버가 필요한 페이지(게시판, 회원가입 등)는 포함하지 마세요
+## Task
+1. Read the user's request carefully
+2. Determine what pages and menu items the user wants
+3. Only create pages/sections that match the user's request
+4. Output in the required format
 
-## 작업
-페이지 목록과 메뉴 구조를 계획하세요.
-
-## 응답 형식 (반드시 이 형식으로 출력)
+## Response Format (use exactly this format)
 ===PLAN_START===
-menu_items: [홈, 소개, 서비스, 연락처]
+menu_items: [Home, About, Services, Contact]
 pages:
   - name: index
     file: index.html
-    title: 홈페이지
+    title: Home
     sections: [hero, about, services, contact]
   - name: about
     file: pages/about.html
-    title: 회사 소개
-    sections: [hero, intro, team, stats]
-  - name: services
-    file: pages/services.html
-    title: 서비스
-    sections: [hero, service_cards, process]
-  - name: contact
-    file: pages/contact.html
-    title: 연락처
-    sections: [hero, form, map]
-===PLAN_END===
-
-## 규칙
-1. 반드시 ===PLAN_START=== 와 ===PLAN_END=== 사이에 출력
-2. menu_items: [메뉴1, 메뉴2, ...] 형식
-3. pages: 아래에 각 페이지를 - name: 으로 시작
-4. 각 페이지는 name, file, title, sections 필수
-5. index 페이지의 file은 반드시 "index.html"
-6. 그 외 페이지의 file은 "pages/이름.html"
-
-## ⚠️ 페이지 수 결정 (매우 중요 - 불필요한 페이지 생성 금지!)
-- **사용자가 명시적으로 요청한 메뉴나 하위 페이지만 생성하세요.**
-- 사용자가 "메뉴 4개", "소개/서비스/연락처 페이지" 등 구체적으로 말한 경우 → 해당 페이지만 생성
-- 사용자가 페이지 수를 명시하지 않았지만 여러 페이지 요청이면, 페이지 유형에 따라 적절한 페이지 구성:
-  - 회사 사이트: index(홈) + 소개 + 서비스 + 연락처 (4페이지)
-  - 랜딩 페이지: index(홈) + 기능 + 후기 + 문의 (4페이지)
-  - 프로모션: index(홈) + 혜택 + CTA (3페이지)
-- **절대 사용자가 요청하지 않은 페이지를 임의로 추가하지 마세요.** (예: 요청 없는 팀/통계/FAQ 페이지 생성 금지)
-- 목표는 **최소 필요 페이지**입니다. 1페이지면 1페이지, 메뉴 3개면 4페이지(홈+3).
-
-## 예시 1: 1페이지만 생성 (단일 페이지 요청)
-===PLAN_START===
-menu_items: [홈]
-pages:
-  - name: index
-    file: index.html
-    title: 홈페이지
-    sections: [hero, about, services, contact]
-===PLAN_END===
-
-## 예시 2: 여러 페이지 생성 (회사 사이트 요청)
-===PLAN_START===
-menu_items: [홈, 소개, 서비스, 연락처]
-pages:
-  - name: index
-    file: index.html
-    title: 홈
-    sections: [hero, about, stats, contact]
-  - name: about
-    file: pages/about.html
-    title: 회사 소개
+    title: About Us
     sections: [hero, intro, team]
   - name: services
     file: pages/services.html
-    title: 서비스
-    sections: [hero, service_cards, process]
+    title: Services
+    sections: [hero, service_cards]
   - name: contact
     file: pages/contact.html
-    title: 연락처
-    sections: [hero, form, map]
+    title: Contact
+    sections: [hero, form]
+===PLAN_END===
+
+## Rules
+1. Output ONLY between ===PLAN_START=== and ===PLAN_END===
+2. menu_items: [item1, item2, ...] format
+3. Each page needs: name, file, title, sections
+4. index page file must be "index.html"
+5. Other pages: "pages/name.html"
+
+## Page Selection (critical)
+- **Only create pages for content the user explicitly requested**
+- If user says "회사 소개페이지, 서비스페이지, 연락처페이지" → 3 pages + index
+- If user says specific menus → create those specific pages only
+- Do NOT add pages the user didn't ask for (no team/stats/faq unless requested)
+- Default: index (home) + what user requested
+
+## Examples:
+
+User says "회사 사이트, 소개/서비스/연락처" → 4 pages:
+===PLAN_START===
+menu_items: [Home, About, Services, Contact]
+pages:
+  - name: index
+    file: index.html
+    title: Home
+    sections: [hero, about, services, contact]
+  - name: about
+    file: pages/about.html
+    title: About
+    sections: [hero, intro]
+  - name: services
+    file: pages/services.html
+    title: Services
+    sections: [hero, service_cards]
+  - name: contact
+    file: pages/contact.html
+    title: Contact
+    sections: [hero, form]
+===PLAN_END===
+
+User says "랜딩 페이지, 기능과 후기 포함" → 3 pages:
+===PLAN_START===
+menu_items: [Home, Features, Reviews]
+pages:
+  - name: index
+    file: index.html
+    title: Home
+    sections: [hero, features, testimonials]
+  - name: features
+    file: pages/features.html
+    title: Features
+    sections: [hero, features]
+  - name: testimonials
+    file: pages/testimonials.html
+    title: Reviews
+    sections: [hero, testimonials]
 ===PLAN_END===
 
 ## 디자인 템플릿
