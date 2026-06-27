@@ -10,6 +10,7 @@ const state = {
   selectedDesignContent: "",
   chatHistory: [],
   isGenerating: false,
+  generatingFiles: {},
   abortController: null,
   htmlHistory: [],
   modelReady: false,
@@ -885,6 +886,11 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
     state.multiPageMode = state.multiPagePlanPages.length > 1;
     totalPages = state.multiPagePlanPages.length;
     state.multiPageMenuItems = mpMenuItems;
+    // Mark all page files as generating
+    state.generatingFiles = {};
+    (d.pages || []).forEach(pg => { state.generatingFiles[pg.file] = true; });
+    state.generatingFiles["assets/css/style.css"] = true;
+    state.generatingFiles["assets/js/main.js"] = true;
     assistantDiv.innerHTML = `\ud83d\udccb \uba40\ud2f0\ud398\uc774\uc9c0 \uacc4\ud68d \uc644\ub8cc (${totalPages}\uac1c \ud398\uc774\uc9c0)<br><span style="color: var(--text-muted); font-size: 0.85rem;">\uba54\ub274: ${mpMenuItems.join(" | ")}</span>`;
     scrollToBottom("messages");
     // Create all files immediately (placeholders for pages + empty CSS/JS)
@@ -924,6 +930,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   sse.on("page_complete", async (d) => {
     const html = d.html || "";
     allPagesHtml[d.file] = html;
+    delete state.generatingFiles[d.file];
     if (html) updatePreview(html.replace(/===MODULE_START===|===MODULE_END===/g, ""), false);
     if (state.currentProjectId && html) {
       await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
@@ -939,6 +946,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
     if (d.pages && Object.keys(d.pages).length > 0) allPagesHtml = d.pages;
     state.generatedHtml = (allPagesHtml["index.html"] || "").replace(/===MODULE_START===|===MODULE_END===/g, "");
     state.multiPageMode = true;
+    state.generatingFiles = {};
     state.multiPagePlanPages = Object.keys(allPagesHtml).map(f => ({ name: f.replace(/\.html$/, "").replace("pages/", ""), file: f }));
     if (state.generatedHtml) updatePreview(state.generatedHtml, false);
     if (!skipFinalActions) {
@@ -1022,6 +1030,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   });
 
   sse.on("done", async (d) => {
+    state.generatingFiles = {};
     state.generatedHtml = (d.html || state.generatedHtml).replace(/===MODULE_START===|===MODULE_END===/g, "");
     if (!state.generatedHtml || state.generatedHtml.length < 50) {
       let fallback = "";
@@ -1783,10 +1792,11 @@ function renderTreeNode(node, depth) {
     return html;
   } else {
     const active = node.path === state.currentViewPath ? " active" : "";
-    const pending = node.pending ? " pending" : "";
+    const isPending = node.pending || state.generatingFiles[node.path];
+    const pending = isPending ? " pending" : "";
     const icon = node.path.endsWith(".html") ? "\ud83c\udf10" : node.ext === ".css" ? "\ud83c\udfa8" : node.ext === ".js" ? "\ud83d\udce6" : "\ud83d\udcc4";
     const delBtn = node.pending || state.isGenerating ? "" : `<span class="tree-del" onclick="event.stopPropagation();deleteFile('${node.path}')" title="삭제">&times;</span>`;
-    return `<div class="tree-item file${active}${pending}" style="padding-left: ${depth * 16 + 8}px;" onclick="loadFileInPreview('${node.path}')"><span class="tree-icon">${icon}</span><span class="tree-name">${node.name}</span>${node.pending ? '<span class="tree-badge pending">\uc0dd\uc131 \uc911</span>' : ""}${delBtn}</div>`;
+    return `<div class="tree-item file${active}${pending}" style="padding-left: ${depth * 16 + 8}px;" onclick="loadFileInPreview('${node.path}')"><span class="tree-icon">${icon}</span><span class="tree-name">${node.name}</span>${isPending ? '<span class="tree-badge pending">\uc0dd\uc131 \uc911</span>' : ""}${delBtn}</div>`;
   }
 }
 
