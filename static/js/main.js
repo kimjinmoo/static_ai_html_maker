@@ -963,17 +963,24 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pages: allPagesHtml, title: state.projectTitle, page_type: state.selectedType, template: state.selectedTemplate, history: state.chatHistory, design_content: state.selectedDesignContent, menu_items: mpMenuItems }),
         });
-        // AI review: read back and fix index.html
+        // AI review: read back all pages and fix
         try {
           const [cr, jr] = await Promise.all([
             fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/css/style.css`).then(r => r.json()).catch(() => ({})),
             fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/js/main.js`).then(r => r.json()).catch(() => ({})),
           ]);
           const ih = allPagesHtml["index.html"] || "";
+          const pageContents = {};
+          for (const [path] of Object.entries(allPagesHtml)) {
+            if (path !== "index.html") {
+              const pr = await fetch(`/api/projects/${state.currentProjectId}/read_file?path=${encodeURIComponent(path)}`).then(r => r.json()).catch(() => ({}));
+              if (pr.content) pageContents[path] = pr.content;
+            }
+          }
           if (ih) {
             const reviewRes = await fetch("/api/review_code", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ html: ih, css: cr.content || "", js: jr.content || "" }),
+              body: JSON.stringify({ html: ih, css: cr.content || "", js: jr.content || "", pages: pageContents }),
             });
             const reviewData = await reviewRes.json();
             if (reviewData.html && reviewData.html !== ih) {
@@ -1073,15 +1080,22 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ path: "index.html", content: state.generatedHtml }),
         }).catch(() => {});
-        // AI review: read back saved files and fix issues
+        // AI review: read back all saved files and fix issues
         try {
           const [cr, jr] = await Promise.all([
             fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/css/style.css`).then(r => r.json()).catch(() => ({})),
             fetch(`/api/projects/${state.currentProjectId}/read_file?path=assets/js/main.js`).then(r => r.json()).catch(() => ({})),
           ]);
+          // Read all pages
+          const pageFiles = Object.keys(state.multiPageHtmls || {});
+          const pageContents = {};
+          for (const pf of pageFiles) {
+            const pr = await fetch(`/api/projects/${state.currentProjectId}/read_file?path=${encodeURIComponent(pf)}`).then(r => r.json()).catch(() => ({}));
+            if (pr.content) pageContents[pf] = pr.content;
+          }
           const reviewRes = await fetch("/api/review_code", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ html: state.generatedHtml, css: cr.content || "", js: jr.content || "" }),
+            body: JSON.stringify({ html: state.generatedHtml, css: cr.content || "", js: jr.content || "", pages: pageContents }),
           });
           const reviewData = await reviewRes.json();
           if (reviewData.html && reviewData.html !== state.generatedHtml) {

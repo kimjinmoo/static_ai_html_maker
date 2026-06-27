@@ -260,13 +260,17 @@ def api_review_code():
     html = data.get("html", "")
     css = data.get("css", "")
     js = data.get("js", "")
+    pages = data.get("pages", {})
 
     message = "Review and fix these files:\n\n"
-    message += f"--- index.html ---\n```html\n{html[:8000]}\n```\n"
+    message += f"--- index.html ---\n```html\n{html[:6000]}\n```\n"
+    for path, content in pages.items():
+        if content and len(content) > 20:
+            message += f"--- {path} ---\n```html\n{content[:4000]}\n```\n"
     if css:
-        message += f"--- style.css ---\n```css\n{css[:4000]}\n```\n"
+        message += f"--- style.css ---\n```css\n{css[:3000]}\n```\n"
     if js:
-        message += f"--- main.js ---\n```javascript\n{js[:4000]}\n```\n"
+        message += f"--- main.js ---\n```javascript\n{js[:3000]}\n```\n"
     message += "\nFix all issues and return the corrected files."
 
     try:
