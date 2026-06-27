@@ -18,8 +18,9 @@ datas = [
     ('app', 'app'),
 ]
 
-# Collect llama_cpp DLLs
-import site
+binaries = []
+
+# Collect llama_cpp and nvidia DLLs
 site_packages = site.getsitepackages()[0]
 
 llama_cpp_lib = os.path.join(site_packages, 'llama_cpp', 'lib')
