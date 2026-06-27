@@ -855,6 +855,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   sse.on("multi_plan", (d) => {
     mpMenuItems = d.menu_items || [];
     state.multiPagePlanPages = d.pages || [];
+    state.multiPageMode = state.multiPagePlanPages.length > 1;
     totalPages = state.multiPagePlanPages.length;
     state.multiPageMenuItems = mpMenuItems;
     assistantDiv.innerHTML = `\ud83d\udccb \uba40\ud2f0\ud398\uc774\uc9c0 \uacc4\ud68d \uc644\ub8cc (${totalPages}\uac1c \ud398\uc774\uc9c0)<br><span style="color: var(--text-muted); font-size: 0.85rem;">\uba54\ub274: ${mpMenuItems.join(" | ")}</span>`;
@@ -888,6 +889,8 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   sse.on("multi_done", async (d) => {
     if (d.pages && Object.keys(d.pages).length > 0) allPagesHtml = d.pages;
     state.generatedHtml = (allPagesHtml["index.html"] || "").replace(/===MODULE_START===|===MODULE_END===/g, "");
+    state.multiPageMode = true;
+    state.multiPagePlanPages = Object.keys(allPagesHtml).map(f => ({ name: f.replace(/\.html$/, "").replace("pages/", ""), file: f }));
     if (state.generatedHtml) updatePreview(state.generatedHtml, false);
     if (!skipFinalActions) {
       hideGenerating();
@@ -1077,8 +1080,8 @@ async function sendMessage() {
       showGenerating(false);
       const assistantDiv = addMessage("messages", "assistant", "\u23f3 \ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc911...");
       const strategy = await decideStrategy(message, false, false);
-      if (strategy === "modular") {
-        const detected = detectMultiPage(message);
+      const detected = detectMultiPage(message);
+      if (strategy === "modular" || detected === true) {
         await sendMessageModular(message, assistantDiv, null, null, false, false, detected === null ? state.multiPageMode : detected);
       } else {
         await sendMessageDirect(message, assistantDiv);
@@ -1122,7 +1125,8 @@ async function sendMessage() {
       } else if (strategy === "modular") {
         showGenerating(false);
         const assistantDiv = addMessage("messages", "assistant", "\u23f3 \ud398\uc774\uc9c0 \uc7ac\uc0dd\uc131 \uc911...");
-        await sendMessageModular(message, assistantDiv, state.chatHistory.slice(-5), savedHtml || "", false, false, false);
+        const mp = state.multiPageMode || (state.multiPagePlanPages && state.multiPagePlanPages.length > 1);
+        await sendMessageModular(message, assistantDiv, state.chatHistory.slice(-5), savedHtml || "", false, false, mp);
         if (!state.generatedHtml && savedHtml) { state.generatedHtml = savedHtml; updatePreview(state.generatedHtml, false); }
       } else if (strategy === "chat") {
         const assistantDiv = addMessage("messages", "assistant", "\ud83d\udcac \ub2f5\ubcc0 \uc911...");
