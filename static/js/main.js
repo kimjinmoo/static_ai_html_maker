@@ -637,6 +637,8 @@ function updateModularProgress(completedIds, completedCount, modules) {
 
 function updateMultiPageProgress(completedModules, currentPageMods, totalModules, totalPages, currentPageIdx, pageName) {
   if (!el.generatingProgressList || !el.generatingStatusText) return;
+  if (!totalPages || totalPages <= 0) { el.generatingProgressList.innerHTML = '<div style="padding:4px;color:var(--text-muted);font-size:0.75rem;">\uacc4\ud68d \uc218\ub9bd \uc911...</div>'; return; }
+  currentPageIdx = Math.min(currentPageIdx, totalPages - 1);
   el.generatingProgressList.innerHTML = "";
   for (let i = 0; i < totalPages; i++) {
     const isCurrent = i === currentPageIdx;
@@ -650,9 +652,8 @@ function updateMultiPageProgress(completedModules, currentPageMods, totalModules
   }
   const currentLabel = (state.multiPagePlanPages[currentPageIdx] || {}).name || pageName || `\ud398\uc774\uc9c0 ${currentPageIdx + 1}`;
   el.generatingStatusText.textContent = `\ud83d\udcc4 ${currentLabel} \uc0dd\uc131 \uc911${totalModules ? ` (${completedModules}/${totalModules})` : ""}...`;
-  const pageProgress = (currentPageIdx + 1) / totalPages;
-  const moduleProgress = totalModules ? (completedModules / totalModules) / totalPages : 0;
-  updateProgressBar((pageProgress + moduleProgress) * 100);
+  const pct = Math.min(95, ((currentPageIdx) / Math.max(1, totalPages) * 100) + (totalModules ? (completedModules / Math.max(1, totalModules)) * (100 / Math.max(1, totalPages)) : 0));
+  updateProgressBar(pct);
 }
 
 // ── Streaming Helpers ──
