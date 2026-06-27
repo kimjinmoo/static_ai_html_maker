@@ -149,6 +149,27 @@ def chat_stream_modular():
             "content": f"{context}\n\n---\n\n{user_message}\n\n## \uacc4\ud68d \uc2dc \uc8fc\uc758\n- \uc0ac\uc6a9\uc790 \uc694\uccad\uc5d0 \ub530\ub77c \uc801\uc808\ud55c \ud398\uc774\uc9c0\ub97c \uacc4\ud68d\ud558\uc138\uc694. \uc608: \ud68c\uc0ac\uc0ac\uc774\ud2b8\ub294 \uc18c\uac1c/\uc11c\ube44\uc2a4/\uc5f0\ub77d\ucc98, \ub79c\ub529\uc740 \uae30\ub2a5/\ud6c4\uae30/\uac00\uaca9/\ubb38\uc758 \ub4f1.\n- \ud328\ud134: index (\ud648) + \ud558\uc704 \ud398\uc774\uc9c0\uac00 \uc788\uc73c\uba74 \uba54\ub274\uac00 \uc0dd\uc131\ub429\ub2c8\ub2e4.\n- \ubd88\ud544\uc694\ud55c \ud398\uc774\uc9c0(\ud300, \ud1b5\uacc4, FAQ \ub4f1)\ub97c \uc784\uc758\ub85c \ucd94\uac00\ud558\uc9c0 \ub9c8\uc138\uc694. \uc0ac\uc6a9\uc790\uac00 \uba85\uc2dc\ud55c \ub0b4\uc6a9\ub9cc \uacc4\ud68d\ud558\uc138\uc694."
         })
 
+        def _default_multi_page_plan(pt):
+            base = {"menu_items": ["\ud648"], "pages": [{"name": "index", "file": "index.html", "title": "\ud648", "sections": ["hero"]}]}
+            if pt == "company":
+                base = {"menu_items": ["\ud648", "\uc18c\uac1c", "\uc11c\ube44\uc2a4", "\uc5f0\ub77d\ucc98"], "pages": [
+                    {"name": "index", "file": "index.html", "title": "\ud648", "sections": ["hero", "about", "services", "contact"]},
+                    {"name": "about", "file": "pages/about.html", "title": "\uc18c\uac1c", "sections": ["hero", "intro", "team"]},
+                    {"name": "services", "file": "pages/services.html", "title": "\uc11c\ube44\uc2a4", "sections": ["hero", "service_cards"]},
+                    {"name": "contact", "file": "pages/contact.html", "title": "\uc5f0\ub77d\ucc98", "sections": ["hero", "form"]}]}
+            elif pt == "landing":
+                base = {"menu_items": ["\ud648", "\uae30\ub2a5", "\ud6c4\uae30", "\ubb38\uc758"], "pages": [
+                    {"name": "index", "file": "index.html", "title": "\ud648", "sections": ["hero", "features", "testimonials", "cta"]},
+                    {"name": "features", "file": "pages/features.html", "title": "\uae30\ub2a5", "sections": ["hero", "features"]},
+                    {"name": "testimonials", "file": "pages/testimonials.html", "title": "\ud6c4\uae30", "sections": ["hero", "testimonials"]},
+                    {"name": "contact", "file": "pages/contact.html", "title": "\ubb38\uc758", "sections": ["hero", "form"]}]}
+            elif pt == "promotion":
+                base = {"menu_items": ["\ud648", "\ud61c\ud0dd", "CTA"], "pages": [
+                    {"name": "index", "file": "index.html", "title": "\ud648", "sections": ["hero", "offer", "features"]},
+                    {"name": "offer", "file": "pages/offer.html", "title": "\ud61c\ud0dd", "sections": ["hero", "offer"]},
+                    {"name": "cta", "file": "pages/cta.html", "title": "CTA", "sections": ["hero", "cta"]}]}
+            return base["menu_items"], base["pages"]
+
         def generate():
             try:
                 start_time = time.time()
@@ -163,9 +184,10 @@ def chat_stream_modular():
                 print(f"[ParsePlan] Result: {len(menu_items)} menu items, {len(pages)} pages")
 
                 if not pages:
-                    print(f"[ParsePlan] ERROR: No pages parsed!\n{plan_content}\n")
-                    yield f"data: {json.dumps({'type': 'error', 'content': '\ud398\uc774\uc9c0 \uacc4\ud68d\uc744 \ud30c\uc2f1\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4. ' + plan_content[:200]})}\n\n"
-                    return
+                    print(f"[ParsePlan] Fallback: generating default pages for {page_type}")
+                    yield f"data: {json.dumps({'type': 'plan_token', 'content': '\n[기본 페이지 구조 사용]\n'})}\n\n"
+                    menu_items, pages = _default_multi_page_plan(page_type)
+                    yield f"data: {json.dumps({'type': 'plan_token', 'content': f'메뉴: {menu_items}, 페이지: {len(pages)}개\n'})}\n\n"
 
                 if not menu_items:
                     menu_items = ["\ud648"]

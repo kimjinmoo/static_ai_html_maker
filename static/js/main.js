@@ -852,6 +852,12 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   let totalPages = 0;
   let mpMenuItems = [];
 
+  sse.on("error", (d) => {
+    assistantDiv.innerHTML = `\u26a0\ufe0f ${d.content || d.error || "\uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4."}`;
+    hideGenerating();
+    scrollToBottom("messages");
+  });
+
   sse.on("multi_plan", (d) => {
     mpMenuItems = d.menu_items || [];
     state.multiPagePlanPages = d.pages || [];
