@@ -260,28 +260,26 @@ def api_review_code():
     html = data.get("html", "")
     css = data.get("css", "")
     js = data.get("js", "")
-    pages = data.get("pages", {})
 
-    message = "Review and fix these files:\n\n"
-    message += f"--- index.html ---\n```html\n{html[:6000]}\n```\n"
-    for path, content in pages.items():
-        if content and len(content) > 20:
-            message += f"--- {path} ---\n```html\n{content[:4000]}\n```\n"
-    if css:
-        message += f"--- style.css ---\n```css\n{css[:3000]}\n```\n"
-    if js:
-        message += f"--- main.js ---\n```javascript\n{js[:3000]}\n```\n"
-    message += "\nFix all issues and return the corrected files."
+    # Pre-clean
+    html = strip_thinking(html)
+    html = html.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+
+    if not html or len(html) < 50:
+        return jsonify({"html": html})
+
+    msg = "Fix all HTML issues. Rules: 1) Convert &lt; to < and &gt; to >  2) Remove <thinking>/<reasoning>  3) Fix unclosed/broken tags  4) Remove duplicate doctype/html/head/body  5) Return ONLY fixed HTML.\n\n```html\n" + html + "\n```"
 
     try:
         result = ""
         for token in llama_chat_stream([
-            {"role": "system", "content": "Fix the HTML. Remove <thinking>, <reasoning> tags. Fix broken tags. Return ONLY the fixed HTML, no markers, no code blocks, no explanation."},
-            {"role": "user", "content": html[:12000]},
+            {"role": "system", "content": "You fix HTML. Return ONLY the fixed code, no explanation."},
+            {"role": "user", "content": msg},
         ]):
             result += token
+        if not result:
+            return jsonify({"html": html})
         result = result.strip()
-        # Strip code fences
         if result.startswith("```"):
             lines = result.split("\n")
             if lines[0].startswith("```"):
@@ -291,10 +289,10 @@ def api_review_code():
             result = "\n".join(lines).strip()
         if result and len(result) > 50:
             result = strip_thinking(result)
-            if result != html:
-                return jsonify({"html": result, "original": html})
+            result = result.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+            return jsonify({"html": result, "original": html})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[Review] Error: {e}")
     return jsonify({"html": html})
 
 

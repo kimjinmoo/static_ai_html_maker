@@ -11,21 +11,20 @@ def _review_html(html_content):
     """Send assembled HTML to AI for final review and fixes."""
     if not html_content or len(html_content) < 50:
         return html_content
-    # Quick cleanup before AI review
-    cleaned = strip_thinking(html_content)
-    if cleaned != html_content:
-        print(f"  [Review] Pre-clean removed thinking tags: {len(html_content)} -> {len(cleaned)} chars")
-        html_content = cleaned
+    # Pre-clean thinking tags and HTML entities
+    html_content = strip_thinking(html_content)
+    html_content = html_content.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
     messages = [
-        {"role": "system", "content": "Fix the HTML. Remove any <thinking>, <reasoning>, <think> tags. Fix broken tags. Return ONLY the fixed HTML, no markers, no code blocks."},
-        {"role": "user", "content": html_content[:12000]}
+        {"role": "system", "content": "You are an HTML fixer. Fix all issues in the HTML below. Rules: 1) Convert &lt; to < and &gt; to >  2) Remove <thinking>, <reasoning>, <think> tags  3) Fix unclosed tags  4) Remove duplicate doctype/html/head/body  5) Keep CSS in <style> and JS in <script>  6) Return ONLY the fixed HTML, no explanation."},
+        {"role": "user", "content": html_content}
     ]
     try:
         result = ""
         for token in llama_chat_stream(messages):
             result += token
+        if not result:
+            return html_content
         result = result.strip()
-        # Strip code fences if present
         if result.startswith("```"):
             lines = result.split("\n")
             if lines[0].startswith("```"):
@@ -35,9 +34,9 @@ def _review_html(html_content):
             result = "\n".join(lines).strip()
         if result and len(result) > 50:
             result = strip_thinking(result)
-            if result != html_content:
-                print(f"  [Review] Fixed: {len(html_content)} -> {len(result)} chars")
-                return result
+            result = result.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+            print(f"  [Review] Fixed: {len(html_content)} -> {len(result)} chars")
+            return result
     except Exception as e:
         print(f"  [Review] Error: {e}")
     return html_content
