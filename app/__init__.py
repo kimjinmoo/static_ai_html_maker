@@ -18,12 +18,10 @@ def create_app():
         static_url_path="/static",
     )
 
-    # Ensure console logging works even in non-debug mode
+    # Ensure console output works even in non-debug mode
     if not flask_app.debug:
-        handler = logging.StreamHandler(sys.stderr)
-        handler.setLevel(logging.INFO)
-        flask_app.logger.addHandler(handler)
-        flask_app.logger.setLevel(logging.INFO)
+        logging.basicConfig(stream=sys.stderr, level=logging.INFO, force=True)
+        sys.stdout = sys.stderr
 
     flask_app.register_blueprint(main_bp)
     flask_app.register_blueprint(model_bp)
