@@ -104,13 +104,27 @@ function stripThinkingBlock(text) {
   if (!text) return text;
   let result = text;
 
+  // 1. 이미 완전히 닫힌 태그 블록 제거
   result = result.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "");
   result = result.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  result = result.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "");
 
-  const markers = ["Thinking Process:", "\uc0dd\uac01 \uacfc\uc815:"];
+  // 2. 아직 닫히지 않고 열려만 있는 태그들 뒤쪽 내용 전부 제거 (실시간 스트리밍 필터링)
+  const openTags = ["<thinking>", "<think>", "<reasoning>"];
+  for (const tag of openTags) {
+    const idx = result.toLowerCase().indexOf(tag);
+    if (idx !== -1) {
+      result = result.substring(0, idx);
+    }
+  }
+
+  // 3. 한글/영어 생각 과정 마커 처리
+  const markers = ["Thinking Process:", "\uc0dd\uac01 \uacfc\uc815:", "Thinking:", "thought:", "thought \u2014"];
   for (const marker of markers) {
     const idx = result.indexOf(marker);
     if (idx === -1) continue;
+    
+    // 마커 이후에 진짜 HTML 시작점(===HTML_START===, <!DOCTYPE 등)이 있으면 마커~시작점 사이를 제거
     const after = result.substring(idx);
     const endPatterns = [/===HTML_START===/, /```html\s*\n/, /<!DOCTYPE/i, /---\s*\r?\n/, /===\s*\r?\n/];
     let endIdx = -1;
@@ -118,19 +132,24 @@ function stripThinkingBlock(text) {
       const m = after.match(pat);
       if (m && m.index > 0) { endIdx = idx + m.index; break; }
     }
+    
     if (endIdx === -1) {
-      const sepMatch = after.match(/---\s*\r?\n/m);
-      endIdx = sepMatch ? idx + sepMatch.index + sepMatch[0].length : idx;
+      // HTML 시작 전인 스트리밍 도중이라면 마커 뒤쪽은 모두 생각 과정이므로 날려버림
+      result = result.substring(0, idx);
+    } else {
+      result = result.substring(0, idx) + result.substring(endIdx);
     }
-    result = result.substring(0, idx) + result.substring(endIdx);
   }
 
+  // 4. HTML 시작 마커 전의 긴 텍스트를 제거하는 기존 분리선 처리
   if (result === text) {
     const htmlStart = result.search(/===HTML_START===|```html\s*\n|<!DOCTYPE\s+html/i);
     if (htmlStart > 50) {
       const before = result.substring(0, htmlStart);
       const lastSep = before.search(/\n---\s*\r?\n|\n===\s*\r?\n/);
-      if (lastSep >= 0) result = result.substring(lastSep).replace(/^[\n\r]+---\s*\r?\n/, "").replace(/^[\n\r]+===\s*\r?\n/, "");
+      if (lastSep >= 0) {
+        result = result.substring(lastSep).replace(/^[\n\r]+---\s*\r?\n/, "").replace(/^[\n\r]+===\s*\r?\n/, "");
+      }
     }
   }
   return result.trim();
