@@ -43,6 +43,34 @@ def _review_html(html_content):
     return html_content
 
 
+def _deduplicate_html(html):
+    """Remove duplicate doctype/html/head/body tags, keeping only the first occurrence."""
+    lines = html.split('\n')
+    seen_doctype = seen_html = seen_head = seen_body = seen_body_end = False
+    cleaned = []
+    for line in lines:
+        low = line.strip().lower()
+        if low.startswith('<!doctype'):
+            if not seen_doctype: seen_doctype = True; cleaned.append(line)
+        elif low == '<html>' or low.startswith('<html '):
+            if not seen_html: seen_html = True; cleaned.append(line)
+        elif low == '<head>' if not seen_head else False:
+            if not seen_head: seen_head = True; cleaned.append(line)
+        elif low == '<head>':
+            continue
+        elif low == '</head>':
+            cleaned.append(line)
+        elif low == '<body>':
+            if not seen_body: seen_body = True; cleaned.append(line)
+        elif low == '</body>':
+            seen_body_end = True; cleaned.append(line)
+        elif low == '</html>':
+            if seen_body_end: cleaned.append(line)
+        else:
+            cleaned.append(line)
+    return '\n'.join(cleaned)
+
+
 def generate_single_page(context, user_message, history):
     plan_messages = [
         {"role": "system", "content": MODULAR_PLAN_PROMPT},
@@ -129,6 +157,52 @@ def generate_single_page(context, user_message, history):
                     assembled_parts.append(generated_modules[mod["id"]])
             assembled = "\n".join(assembled_parts)
             assembled = strip_thinking(assembled)
+            assembled = _deduplicate_html(assembled)
+            lines = assembled.split('\n')
+            seen_doctype = False
+            seen_html = False
+            seen_head = False
+            seen_body = False
+            seen_body_end = False
+            cleaned = []
+            for line in lines:
+                low = line.strip().lower()
+                if low.startswith('<!doctype') and not seen_doctype:
+                    seen_doctype = True
+                    cleaned.append(line)
+                elif low.startswith('<!doctype'):
+                    continue
+                elif low == '<html>' or low.startswith('<html ') and not seen_html:
+                    seen_html = True
+                    cleaned.append(line)
+                elif low == '<html>' or low.startswith('<html '):
+                    continue
+                elif low == '<head>' and not seen_head:
+                    seen_head = True
+                    cleaned.append(line)
+                elif low == '<head>' and seen_head:
+                    continue
+                elif low == '</head>' and not seen_body:
+                    cleaned.append(line)
+                elif low == '</head>' and seen_body:
+                    continue
+                elif low == '<body>' and not seen_body:
+                    seen_body = True
+                    cleaned.append(line)
+                elif low == '<body>' and seen_body:
+                    continue
+                elif low == '</body>' and not seen_body_end:
+                    seen_body_end = True
+                    cleaned.append(line)
+                elif low == '</body>' and seen_body_end:
+                    continue
+                elif low == '</html>' and seen_body_end:
+                    cleaned.append(line)
+                elif low == '</html>':
+                    continue
+                else:
+                    cleaned.append(line)
+            assembled = '\n'.join(cleaned)
 
             has_doctype = '<!DOCTYPE html>' in assembled or '<!doctype html>' in assembled.lower()
             print(f"\n[Modular] Assembled: {len(assembled)} chars, DOCTYPE: {has_doctype}, modules: {len(generated_modules)}\n", flush=True)
@@ -245,6 +319,7 @@ def generate_multi_page(context, user_message, history, menu_items, pages, desig
                             assembled_parts.append(generated_modules[mod["id"]])
                     assembled = "\n".join(assembled_parts)
                     assembled = strip_thinking(assembled)
+                    assembled = _deduplicate_html(assembled)
 
                     if p_idx == 0 and "head" in generated_modules:
                         shared_head_html = generated_modules["head"]
