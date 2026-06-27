@@ -18,9 +18,8 @@ def create_app():
         static_url_path="/static",
     )
 
-    # Ensure console output works even in non-debug mode
+    # Ensure all console output is visible by redirecting print to stderr
     if not flask_app.debug:
-        logging.basicConfig(stream=sys.stderr, level=logging.INFO, force=True)
         sys.stdout = sys.stderr
 
     flask_app.register_blueprint(main_bp)
