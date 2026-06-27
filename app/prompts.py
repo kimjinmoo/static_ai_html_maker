@@ -90,7 +90,7 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 
 ## HTML 생성 규칙
 - `<!DOCTYPE html>`로 시작, `<head>` + `<body>` 모두 포함
-- `<style>` 태그에 전체 CSS 포함 (반드시!)
+- `<style>` 태그에 전체 CSS 포함 (반드시!) — CSS를 `<style>` 밖에 텍스트로 출력하지 마세요.
 - `* { margin: 0; padding: 0; box-sizing: border-box; }` 리셋 필수
 - Google Fonts `<link>`로 폰트 로드
 - Font Awesome CDN으로 아이콘 사용
