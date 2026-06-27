@@ -11,6 +11,7 @@ const state = {
   chatHistory: [],
   isGenerating: false,
   abortController: null,
+  htmlHistory: [],
   modelReady: false,
   generatedHtml: "",
   currentProjectId: null,
@@ -1000,12 +1001,40 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   await sse.start();
 }
 
+function pushHtmlSnapshot() {
+  if (state.generatedHtml) {
+    state.htmlHistory.push(state.generatedHtml);
+    if (state.htmlHistory.length > 20) state.htmlHistory.shift();
+  }
+}
+
 // ── Main sendMessage ──
 async function sendMessage() {
   const input = el.userInput;
   let message = input.value.trim();
   if (!message || state.isGenerating) return;
   if (!state.modelReady) { showDownloadModal(); return; }
+
+  if (message === "/undo") {
+    if (state.htmlHistory.length === 0) {
+      addMessage("messages", "assistant", "되돌릴 작업이 없습니다.");
+      input.value = "";
+      return;
+    }
+    const prev = state.htmlHistory.pop();
+    state.generatedHtml = prev;
+    updatePreview(prev, false);
+    if (state.currentProjectId) {
+      await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: "index.html", content: prev }),
+      }).catch(() => {});
+      loadFileTree(state.currentProjectId);
+    }
+    addMessage("messages", "assistant", "⏪ 이전 상태로 되돌렸습니다.");
+    input.value = "";
+    return;
+  }
 
   const isFirstGeneration = !state.generatedHtml && !state.selectedElement && !state.pendingElementAction;
   input.value = "";
@@ -1028,6 +1057,8 @@ async function sendMessage() {
     if (imgCtx) displayMessage += imgCtx;
     state.chatHistory.push({ role: "user", content: displayMessage });
   }
+
+  pushHtmlSnapshot();
 
   if (isFirstGeneration) {
     const imgCtx = getImageContext();
@@ -1269,6 +1300,7 @@ async function sendMessageAuto(message) {
   state.reactRejected = false;
   if (!message || state.isGenerating) return;
   if (!state.modelReady) { showDownloadModal(); return; }
+  pushHtmlSnapshot();
   if (!state.pendingPageName) state.generatedHtml = "";
   state.isGenerating = true;
   el.sendBtn.disabled = true;
