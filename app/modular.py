@@ -180,10 +180,14 @@ def generate_multi_page(context, user_message, history, menu_items, pages, desig
                     token_count = 0
                     mod_start = time.time()
 
-                    for token in llama_chat_stream(module_messages):
-                        module_content += token
-                        token_count += 1
-                        yield f"data: {json.dumps({'type': 'module_token', 'page': page_name, 'id': mod_id, 'content': token})}\n\n"
+                    try:
+                        for token in llama_chat_stream(module_messages):
+                            module_content += token
+                            token_count += 1
+                            yield f"data: {json.dumps({'type': 'module_token', 'page': page_name, 'id': mod_id, 'content': token})}\n\n"
+                    except Exception as me:
+                        print(f"  [MultiPage] {page_name}/{mod_id} error: {me}", flush=True)
+                        module_content = f"<!-- {mod_id} module generation failed, using placeholder -->"
 
                     mod_html = extract_module_html(module_content) or strip_thinking(module_content.strip())
                     mod_elapsed = time.time() - mod_start
