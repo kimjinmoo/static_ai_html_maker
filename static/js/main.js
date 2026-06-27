@@ -853,9 +853,9 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   let mpMenuItems = [];
 
   sse.on("error", (d) => {
-    assistantDiv.innerHTML = `\u26a0\ufe0f ${d.content || d.error || "\uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4."}`;
-    hideGenerating();
-    scrollToBottom("messages");
+    if (el.generatingStatusText) {
+      el.generatingStatusText.textContent = `\u26a0\ufe0f ${d.content || d.error || "\uc624\ub958"}`;
+    }
   });
 
   sse.on("multi_plan", (d) => {
@@ -866,6 +866,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
     state.multiPageMenuItems = mpMenuItems;
     assistantDiv.innerHTML = `\ud83d\udccb \uba40\ud2f0\ud398\uc774\uc9c0 \uacc4\ud68d \uc644\ub8cc (${totalPages}\uac1c \ud398\uc774\uc9c0)<br><span style="color: var(--text-muted); font-size: 0.85rem;">\uba54\ub274: ${mpMenuItems.join(" | ")}</span>`;
     scrollToBottom("messages");
+    updateMultiPageProgress(0, {}, 0, totalPages, 0, (d.pages?.[0] || {}).name || "");
     updateProgressBar(5);
   });
 

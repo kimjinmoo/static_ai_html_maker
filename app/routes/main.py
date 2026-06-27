@@ -187,7 +187,7 @@ def chat_stream_modular():
                     print(f"[ParsePlan] Fallback: generating default pages for {page_type}")
                     yield f"data: {json.dumps({'type': 'plan_token', 'content': '\n[기본 페이지 구조 사용]\n'})}\n\n"
                     menu_items, pages = _default_multi_page_plan(page_type)
-                    yield f"data: {json.dumps({'type': 'plan_token', 'content': f'메뉴: {menu_items}, 페이지: {len(pages)}개\n'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'multi_plan', 'menu_items': menu_items, 'pages': pages})}\n\n"
 
                 if not menu_items:
                     menu_items = ["\ud648"]
