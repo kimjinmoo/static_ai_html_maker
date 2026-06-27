@@ -30,13 +30,14 @@ if os.path.exists(llama_cpp_lib):
         if f.endswith('.dll'):
             binaries.append((os.path.join(llama_cpp_lib, f), 'llama_cpp/lib'))
 
-# Collect nvidia CUDA DLLs into the same directory as llama.dll
-nvidia_base = os.path.join(site_packages, 'nvidia')
-if os.path.exists(nvidia_base):
-    for root, dirs, files in os.walk(nvidia_base):
-        for f in files:
-            if f.endswith('.dll'):
-                binaries.append((os.path.join(root, f), 'llama_cpp/lib'))
+# Collect CUDA 12.4 DLLs from system installation into the same dir
+for cuda_ver in ['v12.4', 'v12.5']:
+    cuda_bin = f'C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\{cuda_ver}\\bin'
+    if os.path.exists(cuda_bin):
+        for f in os.listdir(cuda_bin):
+            if f.endswith('.dll') and ('cuda' in f.lower() or 'cublas' in f.lower() or 'cufft' in f.lower() or 'curand' in f.lower() or 'cusolver' in f.lower() or 'cusparse' in f.lower() or 'nvrtc' in f.lower() or 'nvjitlink' in f.lower()):
+                binaries.append((os.path.join(cuda_bin, f), 'llama_cpp/lib'))
+        break
 
 a = Analysis(
     ['run_desktop.py'],

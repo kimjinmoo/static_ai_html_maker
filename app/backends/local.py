@@ -17,7 +17,6 @@ def _setup_windows_cuda_path():
     extra = []
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         meipass = sys._MEIPASS
-        extra.append(meipass)
         lib_dir = os.path.join(meipass, 'llama_cpp', 'lib')
         if os.path.isdir(lib_dir):
             extra.append(lib_dir)
@@ -30,6 +29,14 @@ def _setup_windows_cuda_path():
                         d = os.path.dirname(os.path.join(root, f))
                         if d not in extra:
                             extra.append(d)
+    # Prefer CUDA 12.4 over 13.0 for the pre-built wheel
+    for cuda_ver in ["v12.4", "v12.5"]:
+        cuda_path = f"C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\{cuda_ver}"
+        bin_path = os.path.join(cuda_path, "bin")
+        if os.path.isdir(bin_path):
+            extra.append(bin_path)
+            os.environ["CUDA_PATH"] = cuda_path
+            break
     if not extra:
         return
     sep = ";" if ";" in os.environ.get("PATH", "") else os.pathsep
