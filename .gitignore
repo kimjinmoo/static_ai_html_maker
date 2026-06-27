@@ -7,3 +7,12 @@ dist/
 build/
 *.egg-info/
 .eggs/
+.idea/
+.vscode/
+projects/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+5.0
+6.15.0

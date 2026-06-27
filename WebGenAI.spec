@@ -1,39 +1,64 @@
 # -*- mode: python ; coding: utf-8 -*-
 import sys
+import os
 block_cipher = None
+
+# Build name from environment variable (default: WebGenAI)
+BUILD_NAME = os.environ.get('BUILD_NAME', 'WebGenAI')
 
 # Windows 빌드 시 mlx 관련 모듈 제외
 excludes = []
 if sys.platform == "win32":
-    excludes = ["mlx_lm", "mlx", "numpy._core.multiarray"]
+    excludes = ["mlx_lm", "mlx"]
 
 datas = [
     ('templates', 'templates'),
     ('static', 'static'),
+    ('app', 'app'),
 ]
 
+binaries = []
+
 a = Analysis(
-    ['app.py'],
+    ['run_desktop.py'],
     pathex=[],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=[
         'flask',
-        'llama_cpp',
-        'llama_cpp.llama_cpp',
-        'llama_cpp.llama_chat_format',
-        'llama_cpp.llama_grammar',
-        'llama_cpp.llama_tokenizer',
-        'llama_cpp.llama_lora',
-        'huggingface_hub',
-        'huggingface_hub.hf_file_system',
         'markdown',
         'jinja2',
         'werkzeug',
         'click',
         'markupsafe',
+        'webview',
+        'pywebview',
+        'llama_cpp',
+        'llama_cpp.llama_cpp',
+        'llama_cpp.server',
+        'huggingface_hub',
+        'app',
+        'app.config',
+        'app.model',
+        'app.thinking',
+        'app.chat',
+        'app.modular',
+        'app.download',
+        'app.strategies',
+        'app.vulkan',
+        'app.prompts',
+        'app.utils',
+        'app.backends',
+        'app.backends.base',
+        'app.backends.local',
+        'app.backends.gemini',
+        'app.routes',
+        'app.routes.main',
+        'app.routes.model_routes',
+        'app.routes.project_routes',
+        'app.routes.design_routes',
     ],
-    hookspath=[],
+    hookspath=['./hooks'],
     hooksconfig={},
     runtime_hooks=[],
     excludes=excludes,
@@ -52,12 +77,12 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='WebGenAI',
+    name=BUILD_NAME,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
+    upx_exclude=['*.dll'],
     runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,

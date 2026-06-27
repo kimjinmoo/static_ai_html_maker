@@ -1,0 +1,63 @@
+import os
+import json
+from flask import Blueprint, jsonify, Response
+
+from app.config import N_CTX, N_GPU_LAYERS, N_BATCH, DEFAULT_MODEL, DEFAULT_MODEL_REPO
+from app.utils import find_model_file
+from app.download import download_model_stream, download_status, download_lock
+
+
+model_bp = Blueprint("model", __name__)
+
+
+@model_bp.route("/api/models", methods=["GET"])
+def list_models():
+    try:
+        model_path = find_model_file()
+        if model_path:
+            model_name = os.path.basename(model_path)
+            file_size = os.path.getsize(model_path)
+            return jsonify({
+                "models": [model_name],
+                "model_path": model_path,
+                "status": "ready",
+                "backend": "llama-cpp-python",
+                "file_size_mb": round(file_size / (1024 * 1024), 1),
+                "n_ctx": N_CTX,
+                "n_gpu_layers": N_GPU_LAYERS,
+                "n_batch": N_BATCH,
+            })
+        return jsonify({
+            "models": [],
+            "status": "no_model",
+            "backend": "llama-cpp-python",
+            "hint": "models/ \ud3f4\ub354\uc5d0 GGUF \ud30c\uc77c\uc744 \ubc30\uce58\ud558\uac70\ub098 MODEL_PATH \ud658\uacbd \ubcc0\uc218 \uc124\uc815",
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@model_bp.route("/api/download_default_model", methods=["POST", "GET"])
+def download_default_model():
+    try:
+        if find_model_file():
+            return jsonify({"status": "exists", "model": os.path.basename(find_model_file())})
+
+        repo_id = os.environ.get("MODEL_REPO", DEFAULT_MODEL_REPO)
+        filename = os.environ.get("MODEL_FILE", DEFAULT_MODEL)
+
+        return download_model_stream(repo_id, filename)
+    except Exception as e:
+        return jsonify({"status": "failed", "error": str(e)}), 500
+
+
+@model_bp.route("/api/download_status", methods=["GET"])
+def get_download_status():
+    with download_lock:
+        return jsonify({
+            "downloading": download_status["downloading"],
+            "progress": download_status["progress"],
+            "downloaded_mb": download_status["downloaded_mb"],
+            "total_mb": download_status["total_mb"],
+            "speed": download_status["speed"]
+        })

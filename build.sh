@@ -1,5 +1,5 @@
 #!/bin/bash
-# PyInstaller로 EXE 빌드하는 스크립트
+# PyInstaller로 빌드하는 스크립트
 
 echo "🔧 의존성 설치 중..."
 pip install -r requirements.txt
@@ -9,10 +9,10 @@ pyinstaller WebGenAI.spec --clean
 
 echo ""
 echo "✅ 빌드 완료!"
-echo "실행 파일 위치: dist/WebGenAI/"
+echo "실행 파일: dist/WebGenAI/WebGenAI"
 echo ""
-echo "실행 방법:"
-echo "  1. Ollama가 실행중인지 확인: ollama serve"
-echo "  2. 모델 다운로드: ollama pull gemma4:12b"
-echo "  3. 실행: ./dist/WebGenAI/WebGenAI"
-echo "  4. 브라우저에서 http://localhost:5080 접속"
+read -p "실행하시겠습니까? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    ./dist/WebGenAI/WebGenAI
+fi

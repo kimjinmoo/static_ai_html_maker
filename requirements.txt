@@ -1,6 +1,7 @@
 flask==3.0.0
-llama-cpp-python[huggingface-hub]>=0.2.0
-mlx-lm>=0.20.0; sys_platform == "darwin"
 gunicorn==21.2.0
 pyinstaller>=6.15.0
 markdown==3.5.1
+pywebview>=5.0
+llama-cpp-python>=0.3.0
+huggingface-hub>=0.20.0
