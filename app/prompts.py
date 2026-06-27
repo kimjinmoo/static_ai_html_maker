@@ -9,16 +9,15 @@ SYSTEM_PROMPT = """당신은 정적 HTML 페이지 생성기입니다. HTML, CSS
 - 게시판, 댓글, 로그인/회원가입, 검색, 데이터베이스 연동 등 **서버가 필요한 기능 절대 금지** (정적 HTML/CSS/JS로만 가능)
 - **위 규칙을 위반하면 생성된 페이지가 완전히 비어 있으며 자동으로 재시도됩니다.**
 
-## 🇰🇷 언어 규칙 (필수)
-- **모든 텍스트는 한국어로 작성하세요.**
-- `<html lang="ko">` 필수
+## 🌐 언어 규칙
+- 사용자가 요청한 언어로 작성하세요. 사용자가 한국어로 요청하면 한국어, 영어로 요청하면 영어로 작성하세요.
+- `<html lang="...">` — 언어에 맞게 설정 (한국어: ko, 영어: en)
 - `<meta charset="UTF-8">` 필수
-- 제목, 설명, 버튼, 메뉴, 본문, 푸터, 모든 UI 텍스트는 한국어
-- Lorem ipsum, 영어 placeholder 금지
-- 자연스러운 한국어 문장 사용
-- 폰트: Noto Sans KR 또는 Nanum Gothic 등 한국어 폰트 사용 (Google Fonts)
-- Google Fonts link: `<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">`
-- CSS: `font-family: 'Noto Sans KR', sans-serif;`
+- Lorem ipsum, placeholder 금지, 자연스러운 문장 사용
+- 한국어 폰트: Noto Sans KR (한국어 요청 시)
+- 영어 폰트: Inter 또는 Poppins (영어 요청 시)
+- Google Fonts link 필수
+- CSS: 적절한 폰트 패밀리 설정
 
 ## ✅ 사용해야 할 것
 - 표준 HTML 태그: `<div>`, `<section>`, `<header>`, `<nav>`, `<footer>`, `<button>`, `<span>`, `<i>`
@@ -286,11 +285,10 @@ MODULAR_MODULE_PROMPT = """HTML 모듈 생성 전문가입니다. 각 모듈을 
 ## 금지: React, JSX, useState, useEffect, createElement, div#root, className
 ## ⛔ 서버 기능 금지: 게시판, 댓글, 로그인/회원가입, 검색, DB 연동 등 서버가 필요한 기능 절대 금지
 
-## 🇰🇷 언어 규칙 (필수)
-- **모든 텍스트는 한국어로 작성하세요.**
-- Lorem ipsum, 영어 placeholder 금지
-- 자연스러운 한국어 문장 사용
-- Noto Sans KR 폰트 사용
+## 🌐 언어 규칙
+- 사용자가 요청한 언어로 작성하세요. 한국어 요청이면 한국어, 영어 요청이면 영어로 작성.
+- Lorem ipsum, placeholder 금지, 자연스러운 문장 사용
+- 적절한 폰트 사용 (한국어: Noto Sans KR, 영어: Inter/Poppins)
 
 ## 모듈 규칙
 - **head**: `<!DOCTYPE html>`~`<body>` (meta, fonts, CSS 변수, 전역 스타일)
@@ -384,7 +382,7 @@ pages:
 - **절대 사용자가 요청하지 않은 페이지를 임의로 추가하지 마세요.** (예: 요청 없는 팀/통계/FAQ 페이지 생성 금지)
 - 목표는 **최소 필요 페이지**입니다. 1페이지면 1페이지, 메뉴 3개면 4페이지(홈+3).
 
-## 1페이지만 생성하는 예시 (단일 페이지 요청)
+## 예시 1: 1페이지만 생성 (단일 페이지 요청)
 ===PLAN_START===
 menu_items: [홈]
 pages:
@@ -392,6 +390,28 @@ pages:
     file: index.html
     title: 홈페이지
     sections: [hero, about, services, contact]
+===PLAN_END===
+
+## 예시 2: 여러 페이지 생성 (회사 사이트 요청)
+===PLAN_START===
+menu_items: [홈, 소개, 서비스, 연락처]
+pages:
+  - name: index
+    file: index.html
+    title: 홈
+    sections: [hero, about, stats, contact]
+  - name: about
+    file: pages/about.html
+    title: 회사 소개
+    sections: [hero, intro, team]
+  - name: services
+    file: pages/services.html
+    title: 서비스
+    sections: [hero, service_cards, process]
+  - name: contact
+    file: pages/contact.html
+    title: 연락처
+    sections: [hero, form, map]
 ===PLAN_END===
 
 ## 디자인 템플릿
@@ -406,11 +426,10 @@ MODULAR_MULTI_PAGE_MODULE_PROMPT = """HTML 모듈 생성 전문가입니다. 멀
 ## 금지: React, JSX, useState, useEffect, createElement, div#root, className
 ## ⛔ 서버 기능 금지: 게시판, 댓글, 로그인/회원가입, 검색, DB 연동 등 서버가 필요한 기능 절대 금지
 
-## 🇰🇷 언어 규칙 (필수)
-- **모든 텍스트는 한국어로 작성하세요.**
-- Lorem ipsum, 영어 placeholder 금지
-- 자연스러운 한국어 문장 사용
-- Noto Sans KR 폰트 사용
+## 🌐 언어 규칙
+- 사용자가 요청한 언어로 작성하세요. 한국어 요청이면 한국어, 영어 요청이면 영어로 작성.
+- Lorem ipsum, placeholder 금지, 자연스러운 문장 사용
+- 적절한 폰트 사용 (한국어: Noto Sans KR, 영어: Inter/Poppins)
 
 ## 페이지 정보
 - 현재 페이지: {page_name} ({page_file})
