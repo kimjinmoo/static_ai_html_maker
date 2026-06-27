@@ -1915,7 +1915,7 @@ ${state.generatedHtml.slice(0, 20000)}
 // ── Init ──
 function init() {
   document.querySelectorAll("textarea").forEach(el => {
-    el.addEventListener("input", () => { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 100) + "px"; });
+    el.addEventListener("input", () => { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 200) + "px"; });
     el.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (el.id === "user-input") sendMessage(); } });
   });
   checkConnection();
