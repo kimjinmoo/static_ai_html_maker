@@ -965,7 +965,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
       if (!currentPageModules[d.page]) currentPageModules[d.page] = {};
       assistantDiv.innerHTML = `\u23f3 ${d.page} > \ubaa8\ub4c8 <strong>${d.index + 1}/${d.total}</strong> - ${d.id}`;
       scrollToBottom("messages");
-      updateMultiPageProgress(d.index, currentPageModules[d.page], d.total, totalPages, d.index, d.page);
+      updateMultiPageProgress(0, currentPageModules[d.page], d.total, totalPages, currentPageIdx, d.page);
     } else {
       currentModuleId = d.id;
       const name = modules[d.index]?.description || d.id;
@@ -986,7 +986,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
       if (!currentPageModules[d.page]) currentPageModules[d.page] = {};
       currentPageModules[d.page][d.id] = true;
       const doneMods = Object.keys(currentPageModules[d.page]).length;
-      updateMultiPageProgress(doneMods, currentPageModules[d.page], d.total || totalPages, totalPages, d.index || currentPageIdx, d.page);
+      updateMultiPageProgress(doneMods, currentPageModules[d.page], d.total || totalPages, totalPages, currentPageIdx, d.page);
     } else {
       currentModuleId = "";
       completedCount++;
