@@ -29,14 +29,13 @@ if os.path.exists(llama_cpp_lib):
         if f.endswith('.dll'):
             binaries.append((os.path.join(llama_cpp_lib, f), 'llama_cpp/lib'))
 
-# Collect nvidia CUDA DLLs
+# Collect nvidia CUDA DLLs (put alongside llama.dll for PATH access)
 nvidia_base = os.path.join(site_packages, 'nvidia')
 if os.path.exists(nvidia_base):
     for root, dirs, files in os.walk(nvidia_base):
         for f in files:
             if f.endswith('.dll'):
-                rel_path = os.path.relpath(root, site_packages)
-                binaries.append((os.path.join(root, f), rel_path))
+                binaries.append((os.path.join(root, f), 'llama_cpp/lib'))
 
 a = Analysis(
     ['run_desktop.py'],

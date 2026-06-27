@@ -14,16 +14,27 @@ _llama_lock = threading.Lock()
 def _setup_windows_cuda_path():
     if sys.platform != "win32":
         return
-    nvidia_base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".venv-nvidia", "Lib", "site-packages", "nvidia")
-    if not os.path.isdir(nvidia_base):
-        return
     extra = []
-    for root, dirs, files in os.walk(nvidia_base):
-        for f in files:
-            if f.endswith(".dll"):
-                d = os.path.dirname(os.path.join(root, f))
-                if d not in extra:
-                    extra.append(d)
+    # Check PyInstaller frozen path first
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        meipass = sys._MEIPASS
+        nvidia_dirs = [
+            os.path.join(meipass, 'llama_cpp', 'lib'),
+        ]
+        for d in nvidia_dirs:
+            if os.path.isdir(d) and d not in extra:
+                extra.append(d)
+    else:
+        nvidia_base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".venv-nvidia", "Lib", "site-packages", "nvidia")
+        if os.path.isdir(nvidia_base):
+            for root, dirs, files in os.walk(nvidia_base):
+                for f in files:
+                    if f.endswith(".dll"):
+                        d = os.path.dirname(os.path.join(root, f))
+                        if d not in extra:
+                            extra.append(d)
+    if not extra:
+        return
     sep = ";" if ";" in os.environ.get("PATH", "") else os.pathsep
     os.environ["PATH"] = sep.join(extra) + sep + os.environ.get("PATH", "")
 
