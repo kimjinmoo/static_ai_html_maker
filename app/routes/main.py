@@ -119,6 +119,7 @@ def chat_stream_modular():
     current_js = data.get("current_js", "")
     is_new_page = data.get("is_new_page", False)
     multi_page = data.get("multi_page", False)
+    direct_mode = data.get("direct_mode", False)
 
     TYPE_NAMES = {
         "company": "\ud68c\uc0ac \uc0ac\uc774\ud2b8 (\uc815\uc801 \uc6f9\uc0ac\uc774\ud2b8)",
@@ -200,7 +201,7 @@ def chat_stream_modular():
                 for p in pages:
                     print(f"  [Page] {p['name']} ({p['file']}): {p.get('sections', [])}")
 
-                multi_gen = generate_multi_page(context, user_message, history, menu_items, pages, design_content, scaffold_css=load_scaffold_css(template))
+                multi_gen = generate_multi_page(context, user_message, history, menu_items, pages, design_content, scaffold_css=load_scaffold_css(template), direct_mode=direct_mode)
                 for chunk in multi_gen:
                     yield chunk
 

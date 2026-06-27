@@ -906,6 +906,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
       current_html: currentHtml || state.generatedHtml || "",
       is_new_page: isNewPage || false,
       multi_page: !!multiPage,
+      direct_mode: !!state.directMode,
     }),
   });
 

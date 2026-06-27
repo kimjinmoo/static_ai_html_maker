@@ -341,7 +341,7 @@ def generate_single_page(context, user_message, history, scaffold_css="", templa
     return generate()
 
 
-def generate_multi_page(context, user_message, history, menu_items, pages, design_content, scaffold_css=""):
+def generate_multi_page(context, user_message, history, menu_items, pages, design_content, scaffold_css="", direct_mode=False):
     start_time = time.time()
     page_file_map = {p["name"]: p["file"] for p in pages}
 
@@ -352,6 +352,80 @@ def generate_multi_page(context, user_message, history, menu_items, pages, desig
 
             all_pages_html = {}
             total_pages = len(pages)
+
+            if direct_mode:
+                from app.prompts import MULTI_PAGE_MAIN_PAGE_PROMPT, MULTI_PAGE_SUB_PAGE_PROMPT
+                from app.utils import extractHtml, extractHtmlMarker
+                
+                main_html = ""
+                for p_idx, page in enumerate(pages):
+                    try:
+                        page_name = page["name"]
+                        page_file = page["file"]
+                        page_title = page.get("title", page_name)
+
+                        yield f"data: {json.dumps({'type': 'page_start', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages})}\n\n"
+                        yield f"data: {json.dumps({'type': 'module_start', 'page': page_name, 'id': 'full_page', 'index': 0, 'total': 1})}\n\n"
+                        
+                        if p_idx == 0:
+                            system_prompt = MULTI_PAGE_MAIN_PAGE_PROMPT.format(
+                                menu_items=", ".join(menu_items)
+                            )
+                            if scaffold_css:
+                                system_prompt += f"\n\n## 📦 주입할 스캐폴드 CSS (이 CSS를 `<style>` 안에 그대로 복사)\n```css\n{scaffold_css}\n```"
+                            
+                            user_msg = f"{context}\n\n## 요청: {user_message}\n\n index.html 페이지 전체 코드를 한 번에 생성해 주세요."
+                        else:
+                            system_prompt = MULTI_PAGE_SUB_PAGE_PROMPT.format(
+                                menu_items=", ".join(menu_items),
+                                page_name=page_name,
+                                page_file=page_file,
+                                page_title=page_title,
+                                main_html=main_html
+                            )
+                            user_msg = f"{context}\n\n## 요청: {user_message}\n\n {page_name} ({page_file}) 페이지 전체 코드를 한 번에 생성해 주세요. 메인 페이지의 CSS 디자인과 구조를 그대로 유지해야 합니다."
+
+                        messages = [
+                            {"role": "system", "content": system_prompt},
+                        ]
+                        if history:
+                            messages.extend(history[-4:])
+                        messages.append({"role": "user", "content": user_msg})
+
+                        raw_content = ""
+                        token_count = 0
+                        mod_start = time.time()
+                        
+                        for token in llama_chat_stream(messages):
+                            raw_content += token
+                            token_count += 1
+                            yield f"data: {json.dumps({'type': 'module_token', 'page': page_name, 'id': 'full_page', 'content': token})}\n\n"
+
+                        mod_elapsed = time.time() - mod_start
+                        mod_speed = token_count / mod_elapsed if mod_elapsed > 0 else 0
+                        print(f"  [MultiPage-Direct] {page_name} page: {token_count} tok, {mod_elapsed:.1f}s, {mod_speed:.1f} tok/s", flush=True)
+
+                        extracted = extractHtmlMarker(raw_content) or extractHtml(raw_content) or ""
+                        extracted = strip_thinking(extracted)
+                        extracted = extracted.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+                        extracted = ensure_complete_html(extracted)
+
+                        if p_idx == 0:
+                            main_html = extracted
+
+                        yield f"data: {json.dumps({'type': 'module_complete', 'page': page_name, 'id': 'full_page', 'index': 0, 'total': 1, 'tokens': token_count, 'speed': round(mod_speed, 1)})}\n\n"
+                        
+                        all_pages_html[page_file] = extracted
+                        yield f"data: {json.dumps({'type': 'page_complete', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages, 'html': extracted})}\n\n"
+                    except Exception as pe:
+                        print(f"  [MultiPage-Direct] Page {page.get('name', '?')} failed: {pe}", flush=True)
+                        all_pages_html[page_file] = f"<!-- {page_file} generation failed -->"
+                        yield f"data: {json.dumps({'type': 'plan_token', 'content': f'⚠️ {page_name} page failed, skipped...\n'})}\n\n"
+                        yield f"data: {json.dumps({'type': 'page_complete', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages, 'html': ''})}\n\n"
+
+                yield f"data: {json.dumps({'type': 'multi_done', 'pages': all_pages_html})}\n\n"
+                yield f"data: [DONE]\n\n"
+                return
 
             # Shared modules captured from first page
             shared = {"head": "", "nav": "", "footer": "", "script": ""}
