@@ -6,8 +6,9 @@ def sanitize_surrogates(text):
 
     Python 3.12.0-3.12.5 has a CPython bug (bpo-105201) where
     str.encode('utf-8', errors='replace') raises UnicodeEncodeError
-    instead of replacing surrogates. We use regex substitution which
-    is reliable across all Python versions.
+    instead of replacing surrogates. Python 3.12+ re module also may
+    not match surrogates. We use manual char-by-char ord() check
+    which is reliable across all Python versions.
     """
     if not text:
         return text
@@ -16,7 +17,14 @@ def sanitize_surrogates(text):
         return text
     except (UnicodeEncodeError, ValueError):
         pass
-    fixed = re.sub(r'[\ud800-\udfff]', '\ufffd', text)
+    result = []
+    for ch in text:
+        cp = ord(ch)
+        if 0xD800 <= cp <= 0xDFFF:
+            result.append('\uFFFD')
+        else:
+            result.append(ch)
+    fixed = ''.join(result)
     print(f"  [Sanitize] Fixed {len(text)} chars -> {len(fixed)} chars, first={repr(text[:30])}", flush=True)
     return fixed
 
