@@ -1341,7 +1341,7 @@ async function sendMessage() {
                 page_type: state.selectedType,
                 template: state.selectedTemplate,
                 design_content: state.selectedDesignContent,
-                current_html: savedHtml || "",
+                current_html: savedHtml ? savedHtml.substring(0, 3000) : "",
                 current_css: "",
                 current_js: "",
                 element_context: elementContext,

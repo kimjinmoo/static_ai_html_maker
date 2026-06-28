@@ -32,13 +32,11 @@ def build_messages(data):
     context = f"\ud398\uc774\uc9c0 \uc720\ud615: {TYPE_NAMES.get(page_type, page_type)}\n\ub514\uc790\uc778 \ud15c\ud50c\ub9bf: {TEMPLATE_NAMES.get(template, template)}"
 
     if design_content:
-        # design_content 전체 전달 (이전 500자 잘림 제거 - 토큰 대부분이 유실되는 문제)
-        context += f"\n\n## 디자인 토큰\n{design_content}"
+        context += f"\n\n## \ub514\uc790\uc778 \ud1a0\ud070\n{design_content}"
 
-    # 스캐폴드가 있으면 클래스 레퍼런스 + CSS를 context에 포함
     scaffold_css = load_scaffold_css(template)
     if scaffold_css:
-        context += f"\n\n## 📦 디자인 스캐폴드 CSS (반드시 <style>에 그대로 포함, 수정 금지)\n```css\n{scaffold_css}\n```"
+        context += f"\n\n## \ud83d\udce6 \ub514\uc790\uc778 \uc2a4\uce90\ud3f4\ub4dc CSS (\ubc18\ub4dc\uc2dc <style>\uc5d0 \uadf8\ub300\ub85c \ud3ec\ud568, \uc218\uc815 \uae08\uc9c0)\n```css\n{scaffold_css}\n```"
         context += f"\n\n{SCAFFOLD_CLASS_REFERENCE}"
 
     if is_new_page:
@@ -55,7 +53,8 @@ def build_messages(data):
 - **\uc911\uc694**: HTML \ucf54\ub4dc\ub294 \ubc18\ub4dc\uc2dc ===HTML_START=== \uc640 ===HTML_END=== \uc0ac\uc774\uc5d0 \ucd9c\ub825\ud558\uc138\uc694. \uadf8 \uc678 \uc124\uba85\uc740 \ucd5c\uc18c\ud654\ud558\uc138\uc694."""
     elif element_context and current_html:
         element_context = element_context[:2000]
-        context += f"\n\n## \ud604\uc7ac \uc804\uccb4 HTML (\uc218\uc815 \ub300\uc0c1)\n```html\n{current_html}\n```"
+        truncated = current_html[:3000]
+        context += f"\n\n## \ud604\uc7ac \uc804\uccb4 HTML (\uc218\uc815 \ub300\uc0c1, \uc55e {len(current_html)}\uc790 \uc911 3000\uc790)\n```html\n{truncated}\n```"
         delete_keywords = ["\uc0ad\uc81c", "\uc81c\uac70", "\uc5c6\uc560", "\uc9c0\uc6b0", "delete", "remove", "\uc9c0\uc6cc"]
         is_delete = any(kw in user_message.lower() for kw in delete_keywords)
         if is_delete:
