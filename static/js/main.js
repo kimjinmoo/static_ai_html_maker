@@ -564,9 +564,22 @@ function injectInteractionScript(frame) {
     }
     const script = doc.createElement("script");
     script.id = "wgen-interaction";
-    script.textContent = `(function(){var el=null;var devMode=${state.devMode};function gi(e){var l=e.closest("a");var i={tag:e.tagName.toLowerCase(),id:e.id||"",classes:(e.className||"").toString().trim(),text:(e.innerText||"").substring(0,100).trim(),html:e.outerHTML.substring(0,500)};try{var cs=getComputedStyle(e);i.zIndex=cs.zIndex;i.position=cs.position}catch(ex){}if(e.getAttribute("src"))i.src=e.getAttribute("src");if(e.getAttribute("alt"))i.alt=e.getAttribute("alt");if(l){i.linkHref=l.getAttribute("href")||"";i.linkText=(l.innerText||"").substring(0,100).trim()}return i};document.addEventListener("mouseover",function(e){if(!devMode)return;if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;if(el===e.target)return;document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});e.target.classList.add("wgen-hover")});document.addEventListener("mouseout",function(e){if(!devMode)return;if(el!==e.target)e.target.classList.remove("wgen-hover")});document.addEventListener("click",function(e){if(!devMode)return;if(e.button!==0)return;var l=e.target.closest("a");if(l){var h=l.getAttribute("href");if(!h||h===""||h.startsWith("javascript:")){e.preventDefault();return}e.preventDefault();e.stopPropagation();document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===l){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}else{el=l;l.classList.remove("wgen-hover");l.classList.add("wgen-selected");}window.parent.postMessage({type:"preview-link-clicked",href:h,text:(l.innerText||"").substring(0,100).trim(),tag:"a",classes:(l.className||"").toString().trim()},"*");return}e.stopPropagation();if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===e.target){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=e.target;e.target.classList.remove("wgen-hover");e.target.classList.add("wgen-selected");var i=gi(e.target);i.type="element-selected";window.parent.postMessage(i,"*")});window.addEventListener("message",function(e){if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});el=null}if(e.data&&e.data.type==="navigate"){var h=e.data.href;if(h.startsWith("#")){var t=document.querySelector(h);if(t)t.scrollIntoView({behavior:"smooth"})}}if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;if(devMode){document.body.classList.add("wgen-devmode")}else{document.body.classList.remove("wgen-devmode");document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});el=null}}})})();`;
+    script.textContent = `(function(){var el=null;var devMode=${state.devMode};function gi(e){var l=e.closest("a");var i={tag:e.tagName.toLowerCase(),id:e.id||"",classes:(e.className||"").toString().trim(),text:(e.innerText||"").substring(0,100).trim(),html:e.outerHTML.substring(0,500)};try{var cs=getComputedStyle(e);i.zIndex=cs.zIndex;i.position=cs.position}catch(ex){}if(e.getAttribute("src"))i.src=e.getAttribute("src");if(e.getAttribute("alt"))i.alt=e.getAttribute("alt");if(l){i.linkHref=l.getAttribute("data-nav")||l.getAttribute("href")||"";i.linkText=(l.innerText||"").substring(0,100).trim()}return i};document.addEventListener("mouseover",function(e){if(!devMode)return;if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;if(el===e.target)return;document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});e.target.classList.add("wgen-hover")});document.addEventListener("mouseout",function(e){if(!devMode)return;if(el!==e.target)e.target.classList.remove("wgen-hover")});document.addEventListener("click",function(e){if(e.button!==0)return;var l=e.target.closest("a");if(l){var h=l.getAttribute("data-nav")||l.getAttribute("href");if(!h||h===""||h.startsWith("javascript:")){e.preventDefault();return}e.preventDefault();e.stopPropagation();if(devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===l){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=l;l.classList.remove("wgen-hover");l.classList.add("wgen-selected")}window.parent.postMessage({type:"preview-link-clicked",href:h,text:(l.innerText||"").substring(0,100).trim(),tag:"a",classes:(l.className||"").toString().trim()},"*");return}if(!devMode)return;e.stopPropagation();if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===e.target){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=e.target;e.target.classList.remove("wgen-hover");e.target.classList.add("wgen-selected");var i=gi(e.target);i.type="element-selected";window.parent.postMessage(i,"*")});window.addEventListener("message",function(e){if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});el=null}if(e.data&&e.data.type==="navigate"){var h=e.data.href;if(h.startsWith("#")){var t=document.querySelector(h);if(t)t.scrollIntoView({behavior:"smooth"})}}if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;if(devMode){document.body.classList.add("wgen-devmode")}else{document.body.classList.remove("wgen-devmode");document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});el=null}}})})();`;
     doc.body.appendChild(script);
   } catch (e) { console.warn("iframe injection failed:", e); }
+}
+
+function buildInteractionScript() {
+  return `<script id="wgen-interaction">(function(){
+var el=null;
+var devMode=${state.devMode};
+var sty=document.getElementById("wgen-style")||function(){var s=document.createElement("style");s.id="wgen-style";s.textContent="body.wgen-devmode{cursor:crosshair!important}body.wgen-devmode .wgen-selected{outline:3px solid #6c5ce7!important;outline-offset:2px;cursor:pointer!important}body.wgen-devmode .wgen-hover{outline:2px dashed #00cec9!important;outline-offset:1px;cursor:pointer!important}";document.head.appendChild(s);return s}();
+function applyDevMode(v){var b=document.body;if(b)b.classList.toggle("wgen-devmode",v)};
+var _dm=devMode;applyDevMode(_dm);if(!document.body)document.addEventListener("DOMContentLoaded",function(){applyDevMode(_dm)});
+window.addEventListener("message",function(e){if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;applyDevMode(devMode);if(!devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}}else if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}});
+document.addEventListener("mouseover",function(e){if(!devMode||e.target.tagName==="BODY"||e.target.tagName==="HTML"||el===e.target)return;document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});e.target.classList.add("wgen-hover")});
+document.addEventListener("mouseout",function(e){if(!devMode)return;if(el!==e.target)e.target.classList.remove("wgen-hover")});
+document.addEventListener("click",function(e){if(e.button!==0)return;var l=e.target.closest("a");if(l){var h=l.getAttribute("data-nav")||l.getAttribute("href");if(!h||h===""||h.startsWith("javascript:")){e.preventDefault();return}e.preventDefault();e.stopPropagation();if(devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===l){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=l;l.classList.remove("wgen-hover");l.classList.add("wgen-selected")}window.parent.postMessage({type:"preview-link-clicked",href:h,text:(l.innerText||"").substring(0,100).trim(),tag:"a",classes:(l.className||"").toString().trim()},"*");return}if(!devMode)return;e.stopPropagation();if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===e.target){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=e.target;e.target.classList.add("wgen-selected");window.parent.postMessage({type:"element-selected",tag:e.target.tagName.toLowerCase(),id:e.target.id||"",classes:(e.target.className||"").toString().trim(),text:(e.target.innerText||"").substring(0,100).trim(),html:e.target.outerHTML.substring(0,500)},"*")});})();<\/script>`;
 }
 
 function updatePreview(html, isStreaming) {
@@ -574,11 +587,11 @@ function updatePreview(html, isStreaming) {
   if (!frame || !html) return;
   let processed = html.replace(/===HTML_START===|===HTML_END===/g, "").replace(/<script[\s\S]*?<\/script>/gi, "").trim();
   if (!processed || processed.length < 10) return;
-  const errorCatcher = '<script id="wgen-error-catcher">window.onerror=function(m,u,l,c){window.parent.postMessage({type:"preview-error",message:m,line:l,col:c},"*");return false;};window.addEventListener("unhandledrejection",function(e){window.parent.postMessage({type:"preview-error",message:"Unhandled promise: "+(e.reason&&e.reason.message||e.reason),"line":0,"col":0},"*");});<\/script>';
+  const headScripts = '<script id="wgen-error-catcher">window.onerror=function(m,u,l,c){window.parent.postMessage({type:"preview-error",message:m,line:l,col:c},"*");return false;};window.addEventListener("unhandledrejection",function(e){window.parent.postMessage({type:"preview-error",message:"Unhandled promise: "+(e.reason&&e.reason.message||e.reason),"line":0,"col":0},"*");});<\/script>' + buildInteractionScript();
   const hi = processed.toLowerCase().indexOf("<head");
   if (hi !== -1) {
     const ho = processed.indexOf(">", hi);
-    if (ho !== -1) processed = processed.slice(0, ho + 1) + errorCatcher + processed.slice(ho + 1);
+    if (ho !== -1) processed = processed.slice(0, ho + 1) + headScripts + processed.slice(ho + 1);
   }
   try {
     if (frame.srcdoc !== undefined) {
@@ -601,10 +614,6 @@ function updatePreview(html, isStreaming) {
   frame.style.display = "block";
   frame.classList.remove("hidden");
   if (el.previewPlaceholder) el.previewPlaceholder.classList.add("hidden");
-  if (!frame._loadHandlerSetup) {
-    frame._loadHandlerSetup = true;
-    frame.addEventListener("load", () => setTimeout(() => injectInteractionScript(frame), 200));
-  }
 }
 
 function showGenerating(isEditing) {
@@ -675,7 +684,8 @@ function updateModularProgress(completedIds, completedCount, modules) {
     let status = "pending", icon = "\u00b7";
     if (set.has(m.id)) { status = "completed"; icon = "\u2713"; }
     else if (i === activeIdx) { status = "active"; icon = "\u27f3"; }
-    return `<div class="generating-progress-item ${status}"><span class="generating-progress-icon">${icon}</span><span>${m.description || m.id}</span></div>`;
+    const speedInfo = (i === activeIdx && _lastSpeed) ? ` <span style="color:var(--text-muted);font-size:0.7rem;">${_lastSpeed}</span>` : "";
+    return `<div class="generating-progress-item ${status}"><span class="generating-progress-icon">${icon}</span><span>${m.description || m.id}${speedInfo}</span></div>`;
   }).join("");
   updateProgressBar(modules.length ? (completedCount / modules.length) * 100 : 0);
   const a = el.generatingProgressList.querySelector(".active");
@@ -693,9 +703,10 @@ function updateMultiPageProgress(completedModules, currentPageMods, totalModules
     const status = isCompleted ? "completed" : (isCurrent ? "active" : "pending");
     const icon = isCompleted ? "\u2713" : (isCurrent ? "\u27f3" : "\u00b7");
     const modCount = currentPageMods && isCurrent ? `${completedModules}/${totalModules}` : "";
+    const speedInfo = isCurrent && _lastSpeed ? ` <span style="color:var(--text-muted);font-size:0.7rem;">${_lastSpeed}</span>` : "";
     const pg = state.multiPagePlanPages[i] || {};
     const displayName = pg.label || pg.name || pg.file || pageName || `\ud398\uc774\uc9c0 ${i + 1}`;
-    el.generatingProgressList.innerHTML += `<div class="generating-progress-item ${status}"><span class="generating-progress-icon">${icon}</span><span>${displayName} ${modCount ? `(${modCount})` : ""}</span></div>`;
+    el.generatingProgressList.innerHTML += `<div class="generating-progress-item ${status}"><span class="generating-progress-icon">${icon}</span><span>${displayName} ${modCount ? `(${modCount})` : ""}${speedInfo}</span></div>`;
   }
   const currentLabel = (state.multiPagePlanPages[currentPageIdx] || {}).name || pageName || `\ud398\uc774\uc9c0 ${currentPageIdx + 1}`;
   const speedText = _lastSpeed ? ` [${_lastSpeed}]` : "";
@@ -832,42 +843,55 @@ async function sendMessageDirect(message, assistantDiv) {
   });
   const sse = createSSEReader(res);
   let fullContent = "";
-  const uniqueId = "direct-" + Date.now();
+  let lastPreviewUpdate = 0;
+  const PREVIEW_THROTTLE_MS = 400;
+  let fixedHtml = null;
 
-  assistantDiv.innerHTML = `
-    <div class="message-text-content" id="message-content-${uniqueId}">⏳ 생성 준비 중...</div>
-  `;
-
-  const textDiv = document.getElementById(`message-content-${uniqueId}`);
+  assistantDiv.innerHTML = "";
 
   sse.on("content", (t) => {
     const cText = t.content || t.text || "";
     if (cText) {
       fullContent += cText;
-      const clean = stripThinkingBlock(fullContent);
-      if (clean && clean.trim().length > 0) {
-        textDiv.innerHTML = formatContent(clean);
-      } else {
-        textDiv.innerHTML = "⏳ 홈페이지 생성 중...";
+      const now = Date.now();
+      if (now - lastPreviewUpdate > PREVIEW_THROTTLE_MS) {
+        lastPreviewUpdate = now;
+        const streamingHtml = extractHtmlStreaming(fullContent) || extractHtmlMarker(fullContent);
+        if (streamingHtml && streamingHtml.length > 100) {
+          state.generatedHtml = streamingHtml;
+          updatePreview(streamingHtml, true);
+        }
       }
-      scrollToBottom("messages");
+    }
+  });
+
+  sse.on("html_fix", (d) => {
+    if (d.content) {
+      fixedHtml = d.content;
+      state.generatedHtml = fixedHtml;
+      updatePreview(fixedHtml, false);
     }
   });
 
   sse.on("stream_end", async () => {
     if (!fullContent || fullContent.trim() === "") { throw new Error("AI 응답이 비어있습니다"); }
-    const extracted = extractHtmlMarker(fullContent) || extractHtml(fullContent);
-    if (extracted) {
-      state.generatedHtml = extracted;
-      updatePreview(state.generatedHtml, false);
+    if (fixedHtml) {
+      state.generatedHtml = fixedHtml;
+      updatePreview(fixedHtml, false);
     } else {
-      const di = fullContent.indexOf("<!DOCTYPE html>");
-      if (di !== -1) {
-        let raw = fullContent.slice(di).trim();
-        const eiTag = raw.indexOf("===HTML_END===");
-        if (eiTag !== -1) raw = raw.slice(0, eiTag).trim();
-        state.generatedHtml = raw;
+      const extracted = extractHtmlMarker(fullContent) || extractHtml(fullContent);
+      if (extracted) {
+        state.generatedHtml = extracted;
         updatePreview(state.generatedHtml, false);
+      } else {
+        const di = fullContent.indexOf("<!DOCTYPE html>");
+        if (di !== -1) {
+          let raw = fullContent.slice(di).trim();
+          const eiTag = raw.indexOf("===HTML_END===");
+          if (eiTag !== -1) raw = raw.slice(0, eiTag).trim();
+          state.generatedHtml = raw;
+          updatePreview(state.generatedHtml, false);
+        }
       }
     }
     if (state.generatedHtml && state.currentProjectId) {
@@ -879,7 +903,7 @@ async function sendMessageDirect(message, assistantDiv) {
       loadFileTree(state.currentProjectId);
     }
     hideGenerating();
-    textDiv.innerHTML = "<div>✅ 홈페이지 생성 완료! 오른쪽 미리보기를 확인하세요.</div>";
+    assistantDiv.innerHTML = "✅ 홈페이지 생성 완료! 오른쪽 미리보기를 확인하세요.";
     state.chatHistory.push({ role: "assistant", content: "홈페이지를 생성했습니다." });
     saveProject();
     enableReviewBtn();
@@ -922,6 +946,8 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   let currentPageModules = {};
   let totalPages = 0;
   let mpMenuItems = [];
+  let previewThrottle = 0;
+  const PREVIEW_THROTTLE_MS = 400;
 
   sse.on("error", (d) => {
     const msg = d.content || d.error || "\uc624\ub958";
@@ -944,14 +970,13 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
     scrollToBottom("messages");
     // Create all page placeholder files immediately (CSS/JS already created by showGenerating)
     if (state.currentProjectId) {
-      (d.pages || []).forEach(pg => {
+      Promise.all((d.pages || []).map(pg => {
         const ph = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${pg.title || pg.name || ''}</title><link rel="stylesheet" href="assets/css/style.css"></head><body><p>${pg.file || pg.name} \uc0dd\uc131 \uc911...</p><script src="assets/js/main.js"></script></body></html>`;
-        fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+        return fetch(`/api/projects/${state.currentProjectId}/save_file`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ path: pg.file, content: ph }),
         }).catch(() => {});
-      });
-      loadFileTree(state.currentProjectId);
+      })).then(() => loadFileTree(state.currentProjectId));
     }
     updateMultiPageProgress(0, {}, 0, totalPages, 0, (d.pages?.[0] || {}).name || "");
     updateProgressBar(5);
@@ -1027,9 +1052,21 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
   sse.on("module_token", (d) => {
     if (!moduleHtmls[currentModuleId]) moduleHtmls[currentModuleId] = "";
     moduleHtmls[currentModuleId] += d.content;
+    // Real-time preview streaming for fast single-page mode
+    const now = Date.now();
+    if (currentModuleId === "full_page" && now - previewThrottle > PREVIEW_THROTTLE_MS) {
+      previewThrottle = now;
+      const raw = moduleHtmls["full_page"] || "";
+      const streamingHtml = extractHtmlStreaming(raw) || extractHtmlMarker(raw);
+      if (streamingHtml && streamingHtml.length > 100) {
+        state.generatedHtml = streamingHtml;
+        updatePreview(streamingHtml, true);
+      }
+    }
   });
 
   sse.on("module_complete", (d) => {
+    if (d.speed) _lastSpeed = `${d.speed} tok/s`;
     if (d.page) {
       currentModuleId = "";
       if (!currentPageModules[d.page]) currentPageModules[d.page] = {};
@@ -1040,7 +1077,6 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
       currentModuleId = "";
       completedCount++;
       const name = modules[d.index]?.description || d.id;
-      if (d.speed) _lastSpeed = `${d.speed} tok/s`;
       assistantDiv.innerHTML = `\u2705 ${completedCount}/${modules.length} \uc644\ub8cc \u2014 ${name} ${_lastSpeed ? `(${_lastSpeed})` : ""}`;
       scrollToBottom("messages");
       let raw = moduleHtmls[d.id] || "";
@@ -1317,6 +1353,7 @@ async function sendMessage() {
             let fullContent = "";
             let fullReasoning = "";
             let lastTokenTime = Date.now();
+            let lastPreviewTs = 0;
 
             while (true) {
               const { done, value } = await reader.read();
@@ -1331,7 +1368,19 @@ async function sendMessage() {
                   if (p.error) { streamDone = true; break; }
                   if (p.content) {
                     if (p.type === "reasoning") fullReasoning += p.content;
-                    else fullContent += p.content;
+                    else {
+                      fullContent += p.content;
+                      // Streaming preview
+                      const now = Date.now();
+                      if (now - lastPreviewTs > 400) {
+                        lastPreviewTs = now;
+                        const sp = extractHtmlStreaming(fullContent) || extractHtmlMarker(fullContent);
+                        if (sp && sp.length > 100) {
+                          state.generatedHtml = sp;
+                          updatePreview(sp, true);
+                        }
+                      }
+                    }
                     lastTokenTime = Date.now();
                   }
                 } catch (e) {}
@@ -1617,10 +1666,15 @@ function hideElementActionModal(deselect) {
 // ── Sub-page Navigation ──
 async function loadSubPageInPreview(path) {
   if (!state.currentProjectId) return;
+  if (state.multiPageHtmls[path]) { state.currentViewPath = path; updatePreview(state.multiPageHtmls[path], false); loadFileTree(state.currentProjectId); return; }
   try {
     const res = await fetch(`/api/projects/${state.currentProjectId}/read_file?path=${encodeURIComponent(path)}`);
+    if (!res.ok) {
+      addMessage("messages", "assistant", `⚠️ **${path}** 파일을 찾을 수 없습니다.\n\n이 페이지가 아직 생성되지 않았습니다. "${path.replace("pages/","").replace(".html","")}"(을)를 새로 생성하시려면 채팅에 요청해주세요.`);
+      return;
+    }
     const data = await res.json();
-    if (data.content) { state.currentViewPath = path; updatePreview(data.content, false); loadFileTree(state.currentProjectId); }
+    if (data.content) { state.currentViewPath = path; state.multiPageHtmls[path] = data.content; updatePreview(data.content, false); loadFileTree(state.currentProjectId); }
   } catch (e) { console.warn("Failed to load sub-page:", e); }
 }
 
@@ -1630,6 +1684,10 @@ async function loadFileInPreview(path) {
   if (state.multiPageHtmls[path]) { state.currentViewPath = path; updatePreview(state.multiPageHtmls[path], false); loadFileTree(state.currentProjectId); return; }
   try {
     const res = await fetch(`/api/projects/${state.currentProjectId}/read_file?path=${encodeURIComponent(path)}`);
+    if (!res.ok) {
+      addMessage("messages", "assistant", `⚠️ **${path}** 파일을 찾을 수 없습니다.\n\n파일 트리에서 파일이 아직 생성되지 않은 것 같습니다. 먼저 AI로 페이지를 생성해주세요.`);
+      return;
+    }
     const data = await res.json();
     if (data.content) { state.currentViewPath = path; state.multiPageHtmls[path] = data.content; updatePreview(data.content, false); hideGenerating(false); loadFileTree(state.currentProjectId); }
   } catch (e) { console.warn("Failed to load file:", e); }
@@ -1646,6 +1704,9 @@ window.addEventListener("message", function (e) {
     state.pendingLinkHref = href;
     state.pendingLinkElement = d;
     state.selectedElement = null;
+    // Directly navigate for sub-page links (menu nav), show modal for other links
+    if (href.startsWith("pages/")) { linkActionNavigate(); return; }
+    if (href === "index.html" || href === "/" || href === "./") { linkActionNavigate(); return; }
     showSelectedElementBar(d);
     el.userInput.placeholder = "\u27a1\ufe0f '\uc774\ub3d9\ud574\uc8fc\uc138\uc694' → \ub9c1\ud06c \uc774\ub3d9, '\uc218\uc815' → \ub9c1\ud06c \ud3b8\uc9d1";
     el.userInput.focus();

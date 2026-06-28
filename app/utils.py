@@ -178,6 +178,56 @@ def extract_module_html(module_content):
 _SCAFFOLD_CACHE = {}
 
 
+def extractHtmlMarker(content):
+    """Extract HTML from ===HTML_START=== ===HTML_END=== markers (Python port of JS function)."""
+    if not content:
+        return None
+    si = content.find("===HTML_START===")
+    if si == -1:
+        return None
+    ei = content.find("===HTML_END===", si)
+    if ei > si:
+        raw = content[si + 16:ei].strip()
+    else:
+        raw = content[si + 16:].strip()
+    raw = raw.replace("```html", "").replace("```", "").replace("===HTML_END===", "").replace("===HTML_START===", "").strip()
+    if not raw:
+        return None
+    return raw
+
+
+def extractHtml(content):
+    """Extract HTML content from AI response (Python port of JS function)."""
+    if not content:
+        return None
+    text = content.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Try ===HTML_START=== markers first
+    si = text.find("===HTML_START===")
+    if si != -1:
+        ei = text.find("===HTML_END===", si)
+        h = text[si + 16:ei].strip() if ei > si else text[si + 16:].strip()
+        h = h.replace("```html", "").replace("```", "").strip()
+        if h and len(h) > 10:
+            return h
+
+    # Fallback: find <!DOCTYPE html> directly
+    di = text.lower().find("<!doctype html>")
+    if di != -1:
+        return text[di:].strip()
+
+    di = text.lower().find("<!doctype html")
+    if di != -1:
+        return text[di:].strip()
+
+    # Last resort: find <html>
+    hi = text.lower().find("<html")
+    if hi != -1 and len(text) - hi > 100:
+        return text[hi:].strip()
+
+    return None
+
+
 def load_scaffold_css(template_name):
     """템플릿 이름(minimal_clean/bold_modern/elegant_warm)에 해당하는
     CSS 스캐폴드를 읽어 반환한다. 없으면 빈 문자열."""
@@ -242,6 +292,118 @@ SCAFFOLD_CLASS_REFERENCE = """## 사용 가능한 스캐폴드 클래스 (재정
 - 색상은 하드코딩하지 말고 `var(--color-...)` 사용.
 - `* { margin:0; ... }`, `:root { ... }`, body 리셋 금지 (스캐폴드에 이미 있음).
 """
+
+_FONT_LINKS = {
+    "minimal_clean": '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">',
+    "bold_modern": '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">',
+    "elegant_warm": '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">',
+}
+_FA_CDN = '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">'
+_SCAFFOLD_JS = """  <script>
+(function(){var y=document.getElementById("year");if(y)y.textContent=new Date().getFullYear();
+if("IntersectionObserver"in window){var io=new IntersectionObserver(function(e){e.forEach(function(e){if(e.isIntersecting){e.target.classList.add("visible");io.unobserve(e.target)}})},{threshold:0.1});document.querySelectorAll("[data-animate]").forEach(function(e){io.observe(e)})}
+var t=document.querySelector(".nav-toggle"),m=document.querySelector(".nav-menu");if(t&&m)t.addEventListener("click",function(){m.classList.toggle("open")});
+var n=document.querySelector(".nav");if(n)window.addEventListener("scroll",function(){window.scrollY>20?n.classList.add("scrolled"):n.classList.remove("scrolled")})})();
+</script>"""
+_SCAFFOLD_NAV_FILE_MAP = {"홈": "index.html", "소개": "pages/about.html", "서비스": "pages/services.html", "연락처": "pages/contact.html", "기능": "pages/features.html", "후기": "pages/testimonials.html", "문의": "pages/contact.html", "혜택": "pages/offer.html"}
+
+
+def _build_nav_html(menu_items, current_file, brand):
+    if not menu_items:
+        return f"""  <header class="nav">
+    <div class="nav-inner container">
+      <a href="javascript:void(0)" data-nav="index.html" class="nav-logo">{brand}</a>
+    </div>
+  </header>"""
+    items = "\n          ".join(
+        f'<a href="javascript:void(0)" data-nav="{_SCAFFOLD_NAV_FILE_MAP.get(item, "pages/"+item.lower().replace(" ", "-")+".html")}" class="nav-link{" active" if _SCAFFOLD_NAV_FILE_MAP.get(item, "") == current_file or (item == "홈" and current_file == "index.html") else ""}">{item}</a>'
+        for item in menu_items
+    )
+    return f"""  <header class="nav">
+    <div class="nav-inner container">
+      <a href="javascript:void(0)" data-nav="index.html" class="nav-logo">{brand}</a>
+      <button class="nav-toggle" aria-label="Menu"><i class="fas fa-bars"></i></button>
+      <div class="nav-menu">
+        {items}
+      </div>
+    </div>
+  </header>"""
+
+
+def _build_footer_html(brand, description=""):
+    return f"""  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand">{brand}</div>
+          <p class="footer-tagline">{description or 'AI로 생성된 정적 페이지입니다.'}</p>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Product</h4>
+          <a class="footer-link" href="#">Features</a>
+          <a class="footer-link" href="#">Pricing</a>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Company</h4>
+          <a class="footer-link" href="#">About</a>
+          <a class="footer-link" href="#">Contact</a>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Connect</h4>
+          <a class="footer-link" href="#">Twitter</a>
+          <a class="footer-link" href="#">GitHub</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span class="footer-copy">&copy; <span id="year"></span> {brand}. All rights reserved.</span>
+        <div class="footer-social">
+          <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+          <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>"""
+
+
+def build_scaffold_frame(scaffold_css, template_name="", title="Page", menu_items=None, current_file="index.html", brand="WebGen AI"):
+    """완전한 HTML 페이지 프레임을 생성한다. body에 {CONTENT} 플레이스홀더 포함.
+    시스템이 결정적으로 생성하므로 AI 실패와 무관하게 항상 성공."""
+    font_link = _FONT_LINKS.get(template_name, _FONT_LINKS.get("minimal_clean", ""))
+    nav_html = _build_nav_html(menu_items, current_file, brand)
+    footer_html = _build_footer_html(brand)
+    return f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  {font_link}
+  {_FA_CDN}
+  <style>
+{scaffold_css}
+  </style>
+</head>
+<body>
+{nav_html}
+{{CONTENT}}
+{footer_html}
+{_SCAFFOLD_JS}
+</body>
+</html>"""
+
+
+def build_fallback_html(scaffold_css, title="Page", page_title="Hello", description="", template_name="", menu_items=None, current_file="index.html", brand="WebGen AI"):
+    """Scaffold 기반 완전한 HTML 페이지를 생성한다. AI 실패 시 fallback으로 사용."""
+    frame = build_scaffold_frame(scaffold_css, template_name, title, menu_items, current_file, brand)
+    hero_html = f"""  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <h1 class="hero-title">{page_title}</h1>
+        {f'<p class="hero-subtitle">{description}</p>' if description else ''}
+      </div>
+    </div>
+  </section>"""
+    return frame.replace("{CONTENT}", hero_html)
 
 
 def find_model_file():
@@ -353,18 +515,24 @@ def ensure_complete_html(html):
     # Clean up empty class attributes
     html = re.sub(r'\s+class\s*=\s*["\']\s*["\']', '', html)
 
-    # --- Step 2: Remove non-HTML text before first HTML tag ---
+    # --- Step 2: Strip markdown backtick artifact lines (e.g. "` / `", "` and end with `") ---
+    html = re.sub(r'^\s*`[^<]*`\s*$\n?', '', html, flags=re.MULTILINE)
+
+    # --- Step 3: Remove inline backtick references (AI commentary like "Use `<section>`") ---
+    html = re.sub(r'`[^<]*`', '', html)
+
+    # --- Step 4: Remove non-HTML text before first HTML tag ---
     first_tag = _find_first_html_tag(html)
     if first_tag > 0:
         html = html[first_tag:]
 
-    # --- Step 3: Merge duplicate <style> blocks into one ---
+    # --- Step 5: Merge duplicate <style> blocks into one ---
     html = merge_style_blocks(html)
 
-    # --- Step 4: Remove truncated lines at the end ---
+    # --- Step 6: Remove truncated lines at the end ---
     html = _remove_truncated_lines(html)
 
-    # --- Step 5: Basic structural cleanup ---
+    # --- Step 7: Basic structural cleanup ---
     has_doctype = bool(re.search(r'<!DOCTYPE\s+html', html, re.IGNORECASE))
     has_html_open = bool(re.search(r'<html[\s>]', html, re.IGNORECASE))
     has_html_close = bool(re.search(r'</html\s*>', html, re.IGNORECASE))

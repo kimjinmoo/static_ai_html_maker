@@ -2,7 +2,7 @@ import os
 
 PORT = int(os.environ.get("PORT", "5080"))
 MODEL_PATH = os.environ.get("MODEL_PATH", "")
-N_CTX = int(os.environ.get("N_CTX", "24576"))
+N_CTX = int(os.environ.get("N_CTX", "12288"))
 N_GPU_LAYERS = int(os.environ.get("N_GPU_LAYERS", "-1"))
 N_THREADS = int(os.environ.get("N_THREADS", "16"))
 N_BATCH = int(os.environ.get("N_BATCH", "2048"))

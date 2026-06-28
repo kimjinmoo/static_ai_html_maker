@@ -3,11 +3,89 @@ import time
 import re
 
 from app.model import llama_chat_stream
-from app.prompts import MODULAR_PLAN_PROMPT, MODULAR_MODULE_PROMPT, MODULAR_MULTI_PAGE_MODULE_PROMPT
+from app.prompts import MODULAR_MODULE_PROMPT, MODULAR_MULTI_PAGE_MODULE_PROMPT, CONTENT_ONLY_PROMPT
 from app.utils import (
     extract_module_html, strip_thinking, parse_multi_page_plan, ensure_complete_html,
     load_scaffold_css, SCAFFOLD_CLASS_REFERENCE, strip_module_wrapper, merge_style_blocks,
+    build_fallback_html, build_scaffold_frame, _remove_truncated_lines,
 )
+
+
+def _has_real_html(text):
+    """Check if text is real HTML (not AI planning/commentary with stray tags)."""
+    if not text or len(text.strip()) < 50:
+        return False
+    cleaned = re.sub(r'`[^`]*`', '', text)
+    # Require at least 2 of these structural patterns
+    has_doctype = bool(re.search(r'<!DOCTYPE\s+html', cleaned, re.IGNORECASE))
+    has_html_pair = bool(re.search(r'<html[\s>]', cleaned, re.IGNORECASE)) and bool(re.search(r'</html\s*>', cleaned, re.IGNORECASE))
+    has_head_pair = bool(re.search(r'<head[\s>]', cleaned, re.IGNORECASE)) and bool(re.search(r'</head\s*>', cleaned, re.IGNORECASE))
+    has_body_pair = bool(re.search(r'<body[\s>]', cleaned, re.IGNORECASE)) and bool(re.search(r'</body\s*>', cleaned, re.IGNORECASE))
+    score = sum([has_doctype, has_html_pair, has_head_pair, has_body_pair])
+    if score >= 2:
+        return True
+    # Fallback: standalone content modules with at least 2 real block tags
+    block_tags = len(re.findall(r'<(div|section|header|footer|nav|main|article|aside)\b', cleaned, re.IGNORECASE))
+    return block_tags >= 3
+
+
+def _extract_html_marker(content):
+    if not content:
+        return None
+    si = content.find("===HTML_START===")
+    if si == -1:
+        return None
+    ei = content.find("===HTML_END===", si)
+    if ei > si:
+        raw = content[si + 16:ei].strip()
+    else:
+        raw = content[si + 16:].strip()
+    raw = raw.replace("```html", "").replace("```", "").replace("===HTML_END===", "").replace("===HTML_START===", "").strip()
+    if not raw:
+        return None
+    # Validate that the extracted content contains actual HTML tags,
+    # not just AI commentary (e.g. "Start with `<!DOCTYPE html>` and end with `</html>`.")
+    if not _has_real_html(raw):
+        return None
+    return raw
+
+
+def _extract_html(content):
+    if not content:
+        return None
+    text = content.replace("\r\n", "\n").replace("\r", "\n")
+    # Strip inline code backticks that wrap HTML references (e.g. "`<!DOCTYPE html>`", "`<html>`")
+    # This prevents false-positive doctype detection inside AI commentary.
+    text = re.sub(r'`[^`]*`', '', text)
+    si = text.find("===HTML_START===")
+    if si != -1:
+        ei = text.find("===HTML_END===", si)
+        h = text[si + 16:ei].strip() if ei > si else text[si + 16:].strip()
+        h = h.replace("```html", "").replace("```", "").strip()
+        if h and len(h) > 10 and _has_real_html(h):
+            return h
+    di = text.lower().find("<!doctype html>")
+    if di != -1:
+        result = text[di:].strip()
+        html_end = result.lower().rfind("</html>")
+        if html_end != -1:
+            result = result[:html_end + 7]
+        return result
+    di = text.lower().find("<!doctype html")
+    if di != -1:
+        result = text[di:].strip()
+        html_end = result.lower().rfind("</html>")
+        if html_end != -1:
+            result = result[:html_end + 7]
+        return result
+    hi = text.lower().find("<html")
+    if hi != -1 and len(text) - hi > 100:
+        result = text[hi:].strip()
+        html_end = result.lower().rfind("</html>")
+        if html_end != -1:
+            result = result[:html_end + 7]
+        return result
+    return None
 
 
 # 모듈 id별 필수 HTML 태그 검증 규칙. AI가 reasoning 텍스트를 뱉거나
@@ -205,145 +283,119 @@ def _assemble_modules(modules, generated_modules):
     return assembled
 
 
+def _extract_content_sections(raw):
+    """Extract AI-generated content sections from markers or HTML tags."""
+    if not raw:
+        return ""
+    si = raw.find("===CONTENT_START===")
+    ei = raw.find("===CONTENT_END===", si + 1) if si != -1 else -1
+    if si != -1 and ei != -1:
+        content = raw[si + 18:ei].strip()
+    elif si != -1:
+        content = raw[si + 18:].strip()
+    else:
+        # Try to extract from <body> (AI may have output full page)
+        body_m = re.search(r'<body[^>]*>([\s\S]*)</body>', raw, re.IGNORECASE)
+        if body_m:
+            content = body_m.group(1).strip()
+        else:
+            idx = -1
+            for pat in [r'<section[\s>]', r'<div[\s>]', r'<header[\s>]', r'<main[\s>]', r'<article[\s>]']:
+                m = re.search(pat, raw, re.IGNORECASE)
+                if m:
+                    idx = m.start()
+                    break
+            content = raw[idx:].strip() if idx != -1 else raw.strip()
+    content = strip_thinking(content)
+    content = re.sub(r'```html|```', '', content)
+    content = re.sub(r'^[^<]*?(?=<)', '', content, flags=re.DOTALL)
+    # Strip <head> blocks and head-only elements that leaked into body content
+    content = re.sub(r'<head[^>]*>[\s\S]*?</head>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'^\s*<meta[^>]*>\s*', '', content, flags=re.MULTILINE)
+    content = re.sub(r'^\s*<link[^>]*>\s*', '', content, flags=re.MULTILINE)
+    content = re.sub(r'^\s*<title[^>]*>.*?</title>\s*', '', content, flags=re.IGNORECASE | re.MULTILINE)
+    content = re.sub(r'^\s*<style[^>]*>[\s\S]*?</style>\s*', '', content, flags=re.IGNORECASE | re.MULTILINE)
+    # If no real body-level HTML remains, return empty (frame will show clean nav+footer)
+    if not re.search(r'<(section|div|header|main|article|footer|nav|p|h[1-6]|ul|ol|table|form|aside)\b', content, re.IGNORECASE):
+        return ""
+    return content.strip()
+
+
 def generate_single_page(context, user_message, history, scaffold_css="", template_name=""):
-    plan_messages = [
-        {"role": "system", "content": MODULAR_PLAN_PROMPT},
-    ]
-    if history:
-        plan_messages.extend(history[-6:])
-    plan_messages.append({
-        "role": "user",
-        "content": f"{context}\n\n---\n\n{user_message}"
-    })
+    """시스템이 HTML 프레임(헤드+네비+푸터+스크립트)을 결정적으로 생성하고,
+    AI는 콘텐츠 섹션(hero + content)만 생성한다.
+    AI 실패와 무관하게 항상 완전한 스타일링된 페이지를 반환한다."""
+
+    # Phase 1: System builds scaffold frame (deterministic, always succeeds)
+    frame = build_scaffold_frame(scaffold_css, template_name, user_message[:50] or "Page")
 
     def generate():
         try:
             start_time = time.time()
 
-            # Phase 1: Plan
-            plan_content = ""
-            for token in llama_chat_stream(plan_messages):
-                plan_content += token
-                yield f"data: {json.dumps({'type': 'plan_token', 'content': token})}\n\n"
+            yield f"data: {json.dumps({'type': 'plan_token', 'content': '📐 페이지 프레임 준비 완료\n'})}\n\n"
+            yield f"data: {json.dumps({'type': 'plan', 'modules': [{'id': 'content_sections', 'description': 'hero + content sections'}]})}\n\n"
+            yield f"data: {json.dumps({'type': 'module_start', 'id': 'content_sections', 'index': 0, 'total': 1})}\n\n"
 
-            modules = _parse_modules(plan_content)
-            if not modules:
-                modules = [
-                    {"id": "head", "description": "meta, title, font, CSS variables, global style"},
-                    {"id": "hero", "description": "full-screen hero section"},
-                    {"id": "content", "description": "main content section"},
-                    {"id": "footer", "description": "footer"},
-                    {"id": "script", "description": "JavaScript"},
-                ]
-                yield f"data: {json.dumps({'type': 'plan_token', 'content': '\n[default modules]\n'})}\n\n"
+            # Phase 2: AI generates content sections only
+            template_names = {"minimal_clean": "Minimal Clean", "bold_modern": "Bold Modern", "elegant_warm": "Elegant Warm", "custom": "Custom"}
+            design_ref = f"Template: {template_names.get(template_name, template_name)}"
 
-            print(f"\n[Modular] Plan: {len(modules)} modules")
-            yield f"data: {json.dumps({'type': 'plan', 'modules': modules})}\n\n"
+            system_prompt = CONTENT_ONLY_PROMPT + "\n\n" + SCAFFOLD_CLASS_REFERENCE + f"\n\n## Design\n{design_ref}"
 
-            # Phase 2: Generate modules
-            generated_modules = {}
-            for i, mod in enumerate(modules):
-                mod_id = mod["id"]
-                mod_desc = mod["description"]
+            messages = [{"role": "system", "content": system_prompt}]
+            if history:
+                messages.extend(history[-6:])
+            messages.append({"role": "user", "content": f"{context}\n\n## 요청\n{user_message}"})
 
-                # head 모듈에는 스캐폴드 CSS를 주입, 이후 모듈엔 클래스 레퍼런스만 제공
-                if mod_id == "head" and scaffold_css:
-                    system_prompt = MODULAR_MODULE_PROMPT + "\n\n" + SCAFFOLD_CLASS_REFERENCE + (
-                        f"\n\n## 📦 주입할 스캐폴드 CSS (이 CSS를 `<style>` 안에 그대로 복사)\n"
-                        f"반드시 아래 CSS 블록 전체를 `<style>`에 포함. 수정/축약 금지.\n"
-                        f"```css\n{scaffold_css}\n```"
-                    )
-                else:
-                    system_prompt = MODULAR_MODULE_PROMPT + "\n\n" + SCAFFOLD_CLASS_REFERENCE
-                    # head가 이미 생성됐으면 그 head를 스타일 참조로 전달
-                    if "head" in generated_modules:
-                        head_ref = generated_modules["head"]
-                        # <style> 블록만 발췌해서 참조로 전달 (이미 정의된 클래스 목록 파악용)
-                        style_blocks = re.findall(r'<style[^>]*>([\s\S]*?)</style>', head_ref, flags=re.IGNORECASE)
-                        if style_blocks:
-                            system_prompt += "\n\n## head 모듈에 정의된 스캐폴드(이미 있음, 재정의 금지)\n```css\n" + "\n".join(style_blocks)[:3000] + "\n```"
+            print(f"\n[Scaffold] Frame: {len(frame)} chars, AI generating content sections...", flush=True)
 
-                prev_html = ""
-                for pid, phtml in generated_modules.items():
-                    truncated = phtml[:500] + ("..." if len(phtml) > 500 else "")
-                    prev_html += f"\n<!-- {pid} -->\n{truncated}\n"
+            full_content = ""
+            token_count = 0
+            mod_start = time.time()
 
-                user_msg = f"""{context}
+            for token in llama_chat_stream(messages):
+                full_content += token
+                token_count += 1
+                yield f"data: {json.dumps({'type': 'module_token', 'id': 'content_sections', 'content': token})}\n\n"
 
-## {mod_id}: {i + 1}/{len(modules)} 모듈
-## 요청: {user_message[:200]}
+            mod_elapsed = time.time() - mod_start
+            mod_speed = token_count / mod_elapsed if mod_elapsed > 0 else 0
+            print(f"  [Content-Done] {token_count} tok, {mod_elapsed:.1f}s, {mod_speed:.1f} tok/s", flush=True)
 
-'{mod_id}' 모듈 HTML만 생성하세요. 스캐폴드의 클래스를 사용하세요.
+            # Phase 3: Inject AI content into scaffold frame
+            ai_content = _extract_content_sections(full_content)
+            ai_content = _remove_truncated_lines(ai_content)
+            if not ai_content.strip():
+                ai_content = f'  <section class="hero"><div class="container"><div class="hero-content"><h1 class="hero-title">{user_message[:50] or "Page"}</h1></div></div></section>'
+            html = frame.replace("{CONTENT}", ai_content)
+            html = html.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+            html = ensure_complete_html(html)
 
-{prev_html and f'## 이전 모듈 (참고):\n{prev_html}' or ''}"""
-
-                module_messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_msg}
-                ]
-
-                yield f"data: {json.dumps({'type': 'module_start', 'id': mod_id, 'index': i, 'total': len(modules)})}\n\n"
-
-                module_content = ""
-                token_count = 0
-                mod_start = time.time()
-
-                for token in llama_chat_stream(module_messages):
-                    module_content += token
-                    token_count += 1
-                    yield f"data: {json.dumps({'type': 'module_token', 'id': mod_id, 'content': token})}\n\n"
-
-                mod_elapsed = time.time() - mod_start
-                mod_speed = token_count / mod_elapsed if mod_elapsed > 0 else 0
-                print(f"  [Mod-Done] {mod_id}: {token_count} tok, {mod_elapsed:.1f}s, {mod_speed:.1f} tok/s", flush=True)
-
-                # 검증 + 1회 재시도 + 폴백
-                def _retry_single():
-                    retry_msg = module_messages[:-1] + [{"role": "user", "content": (
-                        f"{module_messages[-1]['content']}\n\n"
-                        f"## ⚠️ 이전 출력은 '{mod_id}' 모듈의 필수 태그(<{('footer' if mod_id=='footer' else 'script' if mod_id=='script' else 'section')}>)가 없거나 설명 텍스트만 포함되어 있었습니다.\n"
-                        f"오직 ===MODULE_START=== 와 ===MODULE_END=== 사이에 HTML 코드만 출력하세요. 설명/생각/분석 절대 금지."
-                    )}]
-                    retry_content = ""
-                    rc = 0
-                    rs = time.time()
-                    try:
-                        for tok in llama_chat_stream(retry_msg):
-                            retry_content += tok
-                            rc += 1
-                    except Exception as e:
-                        print(f"  [Retry] {mod_id} failed: {e}", flush=True)
-                        return ""
-                    re_elapsed = time.time() - rs
-                    re_speed = rc / re_elapsed if re_elapsed > 0 else 0
-                    print(f"  [Retry-Done] {mod_id}: {rc} tok, {re_elapsed:.1f}s, {re_speed:.1f} tok/s", flush=True)
-                    return retry_content
-
-                mod_html, status = _finalize_module(mod_id, module_content, scaffold_css, on_retry=_retry_single)
-                print(f"  [Finalize] {mod_id}: {status}", flush=True)
-
-                generated_modules[mod_id] = mod_html
-                yield f"data: {json.dumps({'type': 'module_complete', 'id': mod_id, 'index': i, 'total': len(modules), 'tokens': token_count, 'speed': round(mod_speed, 1), 'status': status})}\n\n"
-
-            # Phase 3: Assemble (결정적 조립 + 자동 보정)
-            assembled = _assemble_modules(modules, generated_modules)
-            has_doctype = '<!DOCTYPE html>' in assembled or '<!doctype html>' in assembled.lower()
-            print(f"\n[Modular] Assembled: {len(assembled)} chars, DOCTYPE: {has_doctype}, modules: {len(generated_modules)}\n", flush=True)
-
-            yield f"data: {json.dumps({'type': 'done', 'html': assembled, 'reviewed': True})}\n\n"
-            print(f"[Modular] Total time: {time.time() - start_time:.1f}s\n")
+            yield f"data: {json.dumps({'type': 'module_complete', 'id': 'content_sections', 'index': 0, 'total': 1, 'tokens': token_count, 'speed': round(mod_speed, 1)})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'html': html, 'reviewed': True})}\n\n"
+            print(f"[Scaffold] Total: {len(html)} chars, {time.time() - start_time:.1f}s\n")
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+            err_msg = str(e)
+            yield f"data: {json.dumps({'type': 'error', 'content': err_msg})}\n\n"
+            fallback = build_fallback_html(scaffold_css, title=user_message[:50] or "Page", page_title="Page", description=f"Error: {err_msg[:80]}", template_name=template_name)
+            yield f"data: {json.dumps({'type': 'done', 'html': fallback, 'reviewed': True})}\n\n"
 
     return generate()
 
 
-def generate_multi_page(context, user_message, history, menu_items, pages, design_content, scaffold_css="", direct_mode=False):
+def generate_multi_page(context, user_message, history, menu_items, pages, design_content, scaffold_css="", direct_mode=False, template_name=""):
     start_time = time.time()
     page_file_map = {p["name"]: p["file"] for p in pages}
+
+    def _fallback_page(file, name, title, err_msg=""):
+        desc = user_message[:120] if user_message else ""
+        if err_msg:
+            desc = f"생성 중 오류가 발생했습니다: {err_msg[:80]}"
+        return build_fallback_html(scaffold_css, title=title, page_title=name.capitalize(), description=desc, template_name=template_name, menu_items=menu_items, current_file=file, brand=(context.split('\n')[0][:30] if context else title))
 
     def generate():
         nonlocal context, user_message, menu_items, pages
@@ -354,74 +406,97 @@ def generate_multi_page(context, user_message, history, menu_items, pages, desig
             total_pages = len(pages)
 
             if direct_mode:
-                from app.prompts import MULTI_PAGE_MAIN_PAGE_PROMPT, MULTI_PAGE_SUB_PAGE_PROMPT
-                from app.utils import extractHtml, extractHtmlMarker
-                
-                main_html = ""
-                for p_idx, page in enumerate(pages):
+                # Reorder: generate sub-pages first, then index.html last
+                main_page = None
+                sub_page_list = []
+                for p in pages:
+                    if p.get("file") == "index.html":
+                        main_page = p
+                    else:
+                        sub_page_list.append(p)
+                if not main_page:
+                    main_page = pages[0]
+                reordered_pages = sub_page_list + [main_page]
+                generated_sub_page_info = []
+                reference_html = ""
+
+                for p_idx, page in enumerate(reordered_pages):
+                    page_name = page.get("name", "unknown")
+                    page_file = page.get("file", "unknown.html")
+                    page_title = page.get("title", page_name)
+                    brand = (context.split('\n')[0][:30] if context else page_title)
+
+                    # Step 1: Build scaffold frame (deterministic, always succeeds)
+                    frame = build_scaffold_frame(scaffold_css, template_name, page_title,
+                        menu_items=menu_items, current_file=page_file, brand=brand)
+
                     try:
-                        page_name = page["name"]
-                        page_file = page["file"]
-                        page_title = page.get("title", page_name)
-
                         yield f"data: {json.dumps({'type': 'page_start', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages})}\n\n"
-                        yield f"data: {json.dumps({'type': 'module_start', 'page': page_name, 'id': 'full_page', 'index': 0, 'total': 1})}\n\n"
-                        
-                        if p_idx == 0:
-                            system_prompt = MULTI_PAGE_MAIN_PAGE_PROMPT.format(
-                                menu_items=", ".join(menu_items)
-                            )
-                            if scaffold_css:
-                                system_prompt += f"\n\n## 📦 주입할 스캐폴드 CSS (이 CSS를 `<style>` 안에 그대로 복사)\n```css\n{scaffold_css}\n```"
-                            
-                            user_msg = f"{context}\n\n## 요청: {user_message}\n\n index.html 페이지 전체 코드를 한 번에 생성해 주세요."
-                        else:
-                            system_prompt = MULTI_PAGE_SUB_PAGE_PROMPT.format(
-                                menu_items=", ".join(menu_items),
-                                page_name=page_name,
-                                page_file=page_file,
-                                page_title=page_title,
-                                main_html=main_html
-                            )
-                            user_msg = f"{context}\n\n## 요청: {user_message}\n\n {page_name} ({page_file}) 페이지 전체 코드를 한 번에 생성해 주세요. 메인 페이지의 CSS 디자인과 구조를 그대로 유지해야 합니다."
+                        yield f"data: {json.dumps({'type': 'module_start', 'page': page_name, 'id': page_file, 'index': 0, 'total': 1})}\n\n"
 
-                        messages = [
-                            {"role": "system", "content": system_prompt},
-                        ]
+                        # Step 2: AI generates content sections only
+                        page_context = f"{context}\n\n## 페이지: {page_name} ({page_file})"
+                        ai_prompt = CONTENT_ONLY_PROMPT + "\n\n" + SCAFFOLD_CLASS_REFERENCE
+                        if page_file == "index.html" and generated_sub_page_info:
+                            ai_prompt += "\n\n이 페이지는 메인 페이지입니다. 아래 링크된 서브 페이지들에 대한 소개를 hero 섹션에 포함하세요:\n" + "\n".join(f"- {info['title']} ({info['file']})" for info in generated_sub_page_info)
+
+                        messages = [{"role": "system", "content": ai_prompt}]
                         if history:
                             messages.extend(history[-4:])
-                        messages.append({"role": "user", "content": user_msg})
+                        messages.append({"role": "user", "content": f"{page_context}\n\n## 요청\n{user_message}"})
 
                         raw_content = ""
                         token_count = 0
                         mod_start = time.time()
-                        
+
                         for token in llama_chat_stream(messages):
                             raw_content += token
                             token_count += 1
-                            yield f"data: {json.dumps({'type': 'module_token', 'page': page_name, 'id': 'full_page', 'content': token})}\n\n"
+                            yield f"data: {json.dumps({'type': 'module_token', 'page': page_name, 'id': page_file, 'content': token})}\n\n"
 
                         mod_elapsed = time.time() - mod_start
                         mod_speed = token_count / mod_elapsed if mod_elapsed > 0 else 0
-                        print(f"  [MultiPage-Direct] {page_name} page: {token_count} tok, {mod_elapsed:.1f}s, {mod_speed:.1f} tok/s", flush=True)
+                        print(f"  [MultiPage-Scaffold] {page_name}: {token_count} tok, {mod_elapsed:.1f}s, {mod_speed:.1f} tok/s", flush=True)
 
-                        extracted = extractHtmlMarker(raw_content) or extractHtml(raw_content) or ""
-                        extracted = strip_thinking(extracted)
-                        extracted = extracted.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
-                        extracted = ensure_complete_html(extracted)
+                        # Step 3: Inject AI content into scaffold frame
+                        ai_content = _extract_content_sections(raw_content)
+                        ai_content = _remove_truncated_lines(ai_content)
+                        if not ai_content.strip():
+                            ai_content = f'  <section class="hero"><div class="container"><div class="hero-content"><h1 class="hero-title">{page_title}</h1></div></div></section>'
+                        html = frame.replace("{CONTENT}", ai_content)
+                        html = html.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+                        html = ensure_complete_html(html)
 
-                        if p_idx == 0:
-                            main_html = extracted
+                        if not reference_html:
+                            reference_html = html
+                        if page_file != "index.html":
+                            generated_sub_page_info.append({
+                                "name": page_name,
+                                "file": page_file,
+                                "title": page_title
+                            })
 
-                        yield f"data: {json.dumps({'type': 'module_complete', 'page': page_name, 'id': 'full_page', 'index': 0, 'total': 1, 'tokens': token_count, 'speed': round(mod_speed, 1)})}\n\n"
-                        
-                        all_pages_html[page_file] = extracted
-                        yield f"data: {json.dumps({'type': 'page_complete', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages, 'html': extracted})}\n\n"
+                        yield f"data: {json.dumps({'type': 'module_complete', 'page': page_name, 'id': page_file, 'index': 0, 'total': 1, 'tokens': token_count, 'speed': round(mod_speed, 1)})}\n\n"
+                        all_pages_html[page_file] = html
+                        yield f"data: {json.dumps({'type': 'page_complete', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages, 'html': html})}\n\n"
+
                     except Exception as pe:
-                        print(f"  [MultiPage-Direct] Page {page.get('name', '?')} failed: {pe}", flush=True)
-                        all_pages_html[page_file] = f"<!-- {page_file} generation failed -->"
-                        yield f"data: {json.dumps({'type': 'plan_token', 'content': f'⚠️ {page_name} page failed, skipped...\n'})}\n\n"
-                        yield f"data: {json.dumps({'type': 'page_complete', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages, 'html': ''})}\n\n"
+                        import traceback as _tb
+                        _tb.print_exc()
+                        err_msg = str(pe)
+                        print(f"  [MultiPage] Page {page_name} failed: {err_msg}", flush=True)
+                        # Frame is already built, just inject fallback hero
+                        fallback_hero = f"""  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <h1 class="hero-title">{page_title}</h1>
+        <p class="hero-subtitle">생성 중 오류가 발생했습니다: {err_msg[:80]}</p>
+      </div>
+    </div>
+  </section>"""
+                        all_pages_html[page_file] = frame.replace("{CONTENT}", fallback_hero)
+                        yield f"data: {json.dumps({'type': 'plan_token', 'content': f'⚠️ {page_name} page failed ({err_msg[:80]}), using styled fallback\n'})}\n\n"
+                        yield f"data: {json.dumps({'type': 'page_complete', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages, 'html': all_pages_html[page_file]})}\n\n"
 
                 yield f"data: {json.dumps({'type': 'multi_done', 'pages': all_pages_html})}\n\n"
                 yield f"data: [DONE]\n\n"
@@ -569,15 +644,17 @@ Generate ONLY the '{mod_id}' module HTML.
                             assembled = ensure_complete_html(assembled)
                     all_pages_html[page_file] = assembled
                     print(f"  [MultiPage] {page_name} assembled: {len(assembled)} chars", flush=True)
+                    yield f"data: {json.dumps({'type': 'page_complete', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages, 'html': assembled})}\n\n"
 
                 except Exception as pe:
                     import traceback
                     traceback.print_exc()
-                    print(f"  [MultiPage] Page {page.get('name', '?')} failed: {pe}", flush=True)
-                    all_pages_html[page_file] = f"<!-- {page_file} generation failed -->"
-                    yield f"data: {json.dumps({'type': 'plan_token', 'content': f'⚠️ {page_name} page failed, skipped...\n'})}\n\n"
-
-                yield f"data: {json.dumps({'type': 'page_complete', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages, 'html': assembled})}\n\n"
+                    err_msg = str(pe)
+                    print(f"  [MultiPage] Page {page.get('name', '?')} failed: {err_msg}", flush=True)
+                    fallback = _fallback_page(page_file, page_name, page_title, err_msg)
+                    all_pages_html[page_file] = fallback
+                    yield f"data: {json.dumps({'type': 'plan_token', 'content': f'⚠️ {page_name} page failed ({err_msg[:80]}), using styled fallback\n'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'page_complete', 'name': page_name, 'file': page_file, 'index': p_idx, 'total': total_pages, 'html': fallback})}\n\n"
 
             total_time = time.time() - start_time
             print(f"\n[MultiPage] All {total_pages} pages done in {total_time:.1f}s\n")
@@ -587,7 +664,8 @@ Generate ONLY the '{mod_id}' module HTML.
         except Exception as e:
             import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+            err_msg = str(e)
+            yield f"data: {json.dumps({'type': 'error', 'content': f'Multi-page generation failed: {err_msg}'})}\n\n"
 
     return generate()
 

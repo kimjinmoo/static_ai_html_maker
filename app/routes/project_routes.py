@@ -305,9 +305,12 @@ def project_tree(project_id):
     is_generating = False
     json_path = os.path.join(projects_dir, f"{project_id}.json")
     if os.path.exists(json_path):
-        with open(json_path, 'r', encoding='utf-8') as f:
-            meta = json.load(f)
-        is_generating = meta.get("status") == "generating"
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                meta = json.load(f)
+            is_generating = meta.get("status") == "generating"
+        except (json.JSONDecodeError, Exception):
+            is_generating = False
 
     tree = []
     if os.path.exists(project_dir):
@@ -430,12 +433,12 @@ def save_multipage_project(project_id):
         print(f"  [File] {abs_full}")
 
     # CSS/JS는 HTML에 인라인으로 유지 (분리하지 않음)
-    index_path = os.path.join(project_dir, "index.html")
-
-    projects_dir_for_html = get_projects_dir()
-    html_path = os.path.join(projects_dir_for_html, f"{project_id}.html")
-    with open(html_path, 'w', encoding='utf-8') as f:
-        f.write(index_html)
+    index_html = pages.get("index.html", "")
+    if index_html:
+        projects_dir_for_html = get_projects_dir()
+        html_path = os.path.join(projects_dir_for_html, f"{project_id}.html")
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(index_html)
 
     pages_dir = os.path.join(project_dir, "pages")
     disk_pages = []
