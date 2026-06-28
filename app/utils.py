@@ -1,6 +1,22 @@
 import re
 
 
+def sanitize_surrogates(text):
+    """Remove surrogate characters from text to avoid UTF-8 encoding errors in SSE."""
+    if not text:
+        return text
+    try:
+        text.encode('utf-8')
+        return text
+    except (UnicodeEncodeError, ValueError):
+        try:
+            fixed = text.encode('utf-8', errors='replace').decode('utf-8')
+        except (UnicodeEncodeError, ValueError):
+            fixed = text.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
+        print(f"  [Sanitize] Fixed {len(text)} chars -> {len(fixed)} chars, first={repr(text[:30])}", flush=True)
+        return fixed
+
+
 def strip_thinking(text):
     if not text:
         return text

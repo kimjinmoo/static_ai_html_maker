@@ -7,7 +7,8 @@ from app.model import llama_chat, llama_chat_stream_with_reasoning
 from app.chat import build_messages
 from app.modular import generate_single_page, generate_multi_page
 from app.thinking import filter_thinking_stream
-from app.strategies import decide_strategy
+from app.strategies import decide_strategy, classify_edit
+from app.utils import sanitize_surrogates
 from app.model import llama_chat_stream
 from app.utils import strip_thinking, ensure_complete_html, load_scaffold_css, build_fallback_html, build_scaffold_frame, SCAFFOLD_CLASS_REFERENCE, _remove_truncated_lines
 from app.prompts import CONTENT_ONLY_PROMPT
@@ -72,7 +73,7 @@ def chat_stream():
 
             for item in llama_chat_stream_with_reasoning(messages):
                 token_count += 1
-                token_text = item["text"]
+                token_text = sanitize_surrogates(item["text"])
                 token_type = item["type"]
                 accumulated += token_text
                 now = time.time()
@@ -90,7 +91,20 @@ def chat_stream():
                     if not token_text:
                         continue
 
-                yield f"data: {json.dumps({'content': token_text, 'type': token_type})}\n\n"
+                token_text = sanitize_surrogates(token_text)
+                try:
+                    sse_text = json.dumps({'content': token_text, 'type': token_type}, ensure_ascii=True)
+                    sse_line = f"data: {sse_text}\n\n"
+                    sse_line.encode('utf-8')
+                except (UnicodeEncodeError, ValueError):
+                    token_text = sanitize_surrogates(token_text)
+                    try:
+                        sse_text = json.dumps({'content': token_text, 'type': token_type}, ensure_ascii=True)
+                    except (UnicodeEncodeError, ValueError):
+                        sse_text = json.dumps({'content': repr(token_text), 'type': token_type}, ensure_ascii=True)
+                    sse_line = f"data: {sse_text}\n\n"
+                    print(f"  [SANITIZE] Caught surrogate at token #{token_count}, text={token_text[:50]}", flush=True)
+                yield sse_line
 
                 if not chat_only and "===HTML_END===" in accumulated:
                     print("  [Stream] HTML_END detected, stopping early", flush=True)
@@ -134,13 +148,14 @@ def chat_stream():
                                 ai_content = '<section class="hero"><div class="hero-content"><h1>Welcome</h1><p>Your content goes here.</p></div></section>'
                             fixed_html = frame.replace("{CONTENT}", ai_content)
                             fixed_html = ensure_complete_html(fixed_html)
-                        yield f"data: {json.dumps({'type': 'html_fix', 'content': fixed_html})}\n\n"
+                        yield f"data: {json.dumps({'type': 'html_fix', 'content': sanitize_surrogates(fixed_html)})}\n\n"
                 except Exception as e:
                     print(f"  [HTML Fix Error] {e}", flush=True)
 
             yield f"data: [DONE]\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            err_msg = sanitize_surrogates(str(e))
+            yield f"data: {json.dumps({'error': err_msg})}\n\n"
 
     return Response(generate(), mimetype="text/event-stream")
 
@@ -297,8 +312,13 @@ def chat_stream_modular():
 
                 full_content = ""
                 for token in llama_chat_stream(messages):
+                    token = sanitize_surrogates(token)
                     full_content += token
-                    yield f"data: {json.dumps({'type': 'module_token', 'id': 'full_page', 'content': token})}\n\n"
+                    try:
+                        yield f"data: {json.dumps({'type': 'module_token', 'id': 'full_page', 'content': token})}\n\n"
+                    except (UnicodeEncodeError, ValueError):
+                        safe_token = sanitize_surrogates(token)
+                        yield f"data: {json.dumps({'type': 'module_token', 'id': 'full_page', 'content': repr(safe_token)})}\n\n"
 
                 ai_content = _extract_content_sections(full_content)
                 ai_content = _remove_truncated_lines(ai_content)
@@ -346,6 +366,17 @@ def api_decide_strategy():
 
     strategy, reason, elapsed = decide_strategy(message, has_html, has_element)
     return jsonify({"strategy": strategy, "reason": reason, "elapsed": elapsed})
+
+
+@main_bp.route("/api/classify_edit", methods=["POST"])
+def api_classify_edit():
+    data = request.json
+    message = data.get("message", "").strip()
+    element_context = data.get("element_context", "")
+    if not message or not element_context:
+        return jsonify({"edit_type": "full", "new_text": "", "attrs": {}})
+    edit_type, new_text, attrs = classify_edit(message, element_context)
+    return jsonify({"edit_type": edit_type, "new_text": new_text, "attrs": attrs})
 
 
 @main_bp.route("/api/review_code", methods=["POST"])
