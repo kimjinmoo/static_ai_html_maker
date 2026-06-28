@@ -9,24 +9,25 @@ def sanitize_surrogates(text):
     instead of replacing surrogates. Python 3.12+ re module also may
     not match surrogates. We use manual char-by-char ord() check
     which is reliable across all Python versions.
+
+    Fast-path try/except removed because Python 3.14+ may silently
+    encode surrogates through .encode('utf-8') without raising.
     """
     if not text:
         return text
-    try:
-        text.encode('utf-8')
-        return text
-    except (UnicodeEncodeError, ValueError):
-        pass
     result = []
+    has_surr = False
     for ch in text:
         cp = ord(ch)
         if 0xD800 <= cp <= 0xDFFF:
             result.append('\uFFFD')
+            has_surr = True
         else:
             result.append(ch)
-    fixed = ''.join(result)
-    print(f"  [Sanitize] Fixed {len(text)} chars -> {len(fixed)} chars, first={repr(text[:30])}", flush=True)
-    return fixed
+    if has_surr:
+        print(f"  [Sanitize] Fixed {len(text)} chars -> {len(result)} chars", flush=True)
+        return ''.join(result)
+    return text
 
 
 def strip_thinking(text):
