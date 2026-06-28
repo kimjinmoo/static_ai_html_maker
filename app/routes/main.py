@@ -96,14 +96,14 @@ def chat_stream():
                     sse_text = json.dumps({'content': token_text, 'type': token_type}, ensure_ascii=True)
                     sse_line = f"data: {sse_text}\n\n"
                     sse_line.encode('utf-8')
-                except (UnicodeEncodeError, ValueError):
-                    token_text = sanitize_surrogates(token_text)
+                except Exception:
+                    safe = sanitize_surrogates(token_text)
                     try:
-                        sse_text = json.dumps({'content': token_text, 'type': token_type}, ensure_ascii=True)
-                    except (UnicodeEncodeError, ValueError):
-                        sse_text = json.dumps({'content': repr(token_text), 'type': token_type}, ensure_ascii=True)
+                        sse_text = json.dumps({'content': safe, 'type': token_type}, ensure_ascii=True)
+                    except Exception:
+                        sse_text = json.dumps({'content': repr(safe), 'type': token_type}, ensure_ascii=True)
                     sse_line = f"data: {sse_text}\n\n"
-                    print(f"  [SANITIZE] Caught surrogate at token #{token_count}, text={token_text[:50]}", flush=True)
+                    print(f"  [SANITIZE] Caught encode error at token #{token_count}, text={repr(token_text[:80])}", flush=True)
                 yield sse_line
 
                 if not chat_only and "===HTML_END===" in accumulated:
@@ -316,7 +316,7 @@ def chat_stream_modular():
                     full_content += token
                     try:
                         yield f"data: {json.dumps({'type': 'module_token', 'id': 'full_page', 'content': token})}\n\n"
-                    except (UnicodeEncodeError, ValueError):
+                    except Exception:
                         safe_token = sanitize_surrogates(token)
                         yield f"data: {json.dumps({'type': 'module_token', 'id': 'full_page', 'content': repr(safe_token)})}\n\n"
 
