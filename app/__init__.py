@@ -61,6 +61,9 @@ def create_app():
     from app.routes.settings_routes import settings_bp
     flask_app.register_blueprint(settings_bp)
 
+    from app.routes.edit_routes import edit_bp
+    flask_app.register_blueprint(edit_bp)
+
     from app.vulkan import auto_detect_vulkan_sdk
     auto_detect_vulkan_sdk()
 
