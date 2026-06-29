@@ -10,6 +10,7 @@ build/
 .idea/
 .vscode/
 projects/
+settings.json
 *.log
 *.tmp
 .DS_Store

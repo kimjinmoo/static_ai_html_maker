@@ -544,6 +544,9 @@
                     <span class="toggle-switch"></span>
                     <span class="toggle-text">⚙️ Dev 모드</span>
                   </label>
+                  <button class="btn-settings" onclick="openSettingsModal()" title="AI 백엔드 설정">
+                    ⚙️ 설정
+                  </button>
                   <button class="btn-export" onclick="exportProject()">
                     📦 프로젝트 내보내기
                   </button>
@@ -659,6 +662,61 @@
           >
             나중에
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 백엔드 설정 모달 -->
+    <div class="modal-overlay hidden" id="settings-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>⚙️ AI 백엔드 설정</h2>
+        </div>
+        <div class="modal-body">
+          <div class="setting-row">
+            <label class="setting-label" for="set-backend">백엔드</label>
+            <select id="set-backend" class="setting-input" onchange="onBackendChange()">
+              <option value="local">로컬 (llama-cpp / GGUF)</option>
+              <option value="ollama">Ollama (외부 HTTP API)</option>
+              <option value="gemini">Google Gemini API</option>
+            </select>
+          </div>
+
+          <div class="setting-group" id="set-group-ollama">
+            <div class="setting-row">
+              <label class="setting-label" for="set-ollama-host">Ollama 주소</label>
+              <input id="set-ollama-host" class="setting-input" type="text" placeholder="http://localhost:11434" />
+            </div>
+            <div class="setting-row">
+              <label class="setting-label" for="set-ollama-model">Ollama 모델</label>
+              <input id="set-ollama-model" class="setting-input" type="text" placeholder="qwen2.5-coder:7b" />
+            </div>
+          </div>
+
+          <div class="setting-group" id="set-group-gemini">
+            <div class="setting-row">
+              <label class="setting-label" for="set-gemini-key">Gemini API 키</label>
+              <input id="set-gemini-key" class="setting-input" type="password" placeholder="(설정 시 변경, 빈칸이면 유지)" />
+            </div>
+            <div class="setting-row">
+              <label class="setting-label" for="set-gemini-model">Gemini 모델</label>
+              <input id="set-gemini-model" class="setting-input" type="text" placeholder="gemini-2.5-flash" />
+            </div>
+          </div>
+
+          <div class="setting-group" id="set-group-local">
+            <div class="setting-row">
+              <label class="setting-label" for="set-model-path">모델 경로 (선택)</label>
+              <input id="set-model-path" class="setting-input" type="text" placeholder="(비우면 models/ 자동 감지)" />
+            </div>
+          </div>
+
+          <div id="settings-test-result" class="settings-test-result hidden"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="testSettings()">🔌 연결 테스트</button>
+          <button class="btn-primary" onclick="saveSettings()">💾 저장 및 적용</button>
+          <button class="btn-secondary" onclick="closeSettingsModal()">닫기</button>
         </div>
       </div>
     </div>

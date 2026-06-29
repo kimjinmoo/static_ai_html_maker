@@ -1836,3 +1836,85 @@ window.fixAllIssues = fixAllIssues;
 window.toggleFileTree = toggleFileTree;
 
 init();
+
+// ── AI 백엔드 설정 ──
+function onBackendChange() {
+  const b = document.getElementById("set-backend").value;
+  const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? "" : "none"; };
+  show("set-group-ollama", b === "ollama");
+  show("set-group-gemini", b === "gemini");
+  show("set-group-local", b === "local");
+}
+
+async function openSettingsModal() {
+  const modal = document.getElementById("settings-modal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  const res = document.getElementById("settings-test-result");
+  if (res) res.classList.add("hidden");
+  try {
+    const r = await fetch("/api/settings");
+    const s = await r.json();
+    document.getElementById("set-backend").value = s.llm_backend || "local";
+    document.getElementById("set-ollama-host").value = s.ollama_host || "";
+    document.getElementById("set-ollama-model").value = s.ollama_model || "";
+    document.getElementById("set-gemini-model").value = s.gemini_model || "";
+    document.getElementById("set-model-path").value = s.model_path || "";
+    const keyField = document.getElementById("set-gemini-key");
+    keyField.value = "";
+    keyField.placeholder = s.gemini_api_key_set ? "(설정됨 — 변경 시에만 입력)" : "API 키 입력";
+  } catch (e) { /* ignore */ }
+  onBackendChange();
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById("settings-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function _collectSettings() {
+  return {
+    llm_backend: document.getElementById("set-backend").value,
+    ollama_host: document.getElementById("set-ollama-host").value.trim(),
+    ollama_model: document.getElementById("set-ollama-model").value.trim(),
+    gemini_api_key: document.getElementById("set-gemini-key").value.trim(),
+    gemini_model: document.getElementById("set-gemini-model").value.trim(),
+    model_path: document.getElementById("set-model-path").value.trim(),
+  };
+}
+
+function _showSettingsResult(ok, msg) {
+  const res = document.getElementById("settings-test-result");
+  if (!res) return;
+  res.classList.remove("hidden");
+  res.style.color = ok ? "var(--success, #2ecc71)" : "var(--error, #e74c3c)";
+  res.textContent = (ok ? "✅ " : "⚠️ ") + msg;
+}
+
+async function testSettings() {
+  _showSettingsResult(true, "테스트 중...");
+  try {
+    const r = await fetch("/api/settings/test", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(_collectSettings()),
+    });
+    const d = await r.json();
+    _showSettingsResult(!!d.ok, d.message || (d.ok ? "성공" : "실패"));
+  } catch (e) { _showSettingsResult(false, "요청 실패: " + e.message); }
+}
+
+async function saveSettings() {
+  try {
+    const r = await fetch("/api/settings", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(_collectSettings()),
+    });
+    const d = await r.json();
+    if (d.status === "ok") {
+      _showSettingsResult(true, "저장 완료 — 백엔드가 즉시 적용되었습니다.");
+      setTimeout(closeSettingsModal, 900);
+    } else {
+      _showSettingsResult(false, "저장 실패");
+    }
+  } catch (e) { _showSettingsResult(false, "저장 실패: " + e.message); }
+}

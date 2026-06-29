@@ -2525,3 +2525,29 @@ body {
   cursor: pointer;
 }
 .mode-select:focus { outline: 1px solid var(--primary, #6366f1); }
+
+/* AI 백엔드 설정 모달 */
+.btn-settings {
+  background: var(--surface, #1a1a1a);
+  color: var(--text, #e8e8e8);
+  border: 1px solid var(--border, #333);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn-settings:hover { border-color: var(--primary, #6366f1); }
+.setting-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.setting-label { flex: 0 0 110px; font-size: 13px; color: var(--text-muted, #999); }
+.setting-input {
+  flex: 1;
+  background: var(--surface, #1a1a1a);
+  color: var(--text, #e8e8e8);
+  border: 1px solid var(--border, #333);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.setting-input:focus { outline: 1px solid var(--primary, #6366f1); }
+.setting-group { border-top: 1px solid var(--border, #2a2a2a); padding-top: 12px; margin-top: 4px; }
+.settings-test-result { margin-top: 12px; font-size: 13px; }
