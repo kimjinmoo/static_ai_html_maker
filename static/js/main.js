@@ -58,6 +58,7 @@ const el = {
   previewFrame: $("preview-frame"),
   previewPlaceholder: $("preview-placeholder"),
   previewGenerating: $("preview-generating"),
+  generatingModal: $("generating-modal"),
   generatingProgressList: $("generating-progress-list"),
   generatingStatusText: $("generating-status-text"),
   generatingProgressBar: $("generating-progress-bar"),
@@ -641,8 +642,9 @@ function updatePreview(html, isStreaming) {
 
 function showGenerating(isEditing) {
   state.abortController = new AbortController();
+  // \uc9c4\ud589\uc0c1\ud669/todo\ub294 \ubaa8\ub2ec\ub85c \u2014 \ubbf8\ub9ac\ubcf4\uae30 \uc601\uc5ed\uc740 HTML(iframe)\ub9cc \uc720\uc9c0
+  if (el.generatingModal) el.generatingModal.classList.remove("hidden");
   if (el.previewGenerating) {
-    el.previewGenerating.classList.remove("hidden");
     const title = el.previewGenerating.querySelector("h3");
     if (title) title.textContent = isEditing ? "\uc218\uc815 \uc911" : "\ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc911";
   }
@@ -650,7 +652,6 @@ function showGenerating(isEditing) {
   if (cancelBtn) cancelBtn.classList.remove("hidden");
   if (el.generatingProgressList) el.generatingProgressList.innerHTML = "";
   if (el.generatingStatusText) el.generatingStatusText.textContent = isEditing ? "\uc218\uc815 \uc694\uccad\uc744 \ucc98\ub9ac \uc911\uc785\ub2c8\ub2e4..." : "AI\uac00 \ud398\uc774\uc9c0\ub97c \ub9cc\ub4e4\uace0 \uc788\uc2b5\ub2c8\ub2e4...";
-  if (el.previewFrame) el.previewFrame.classList.add("hidden");
   // Create empty CSS/JS placeholder files at the start of any generation
   state.generatingFiles = { "assets/css/style.css": true, "assets/js/main.js": true };
   if (state.currentProjectId) {
@@ -670,7 +671,7 @@ function showGenerating(isEditing) {
 
 function hideGenerating(isFinal) {
   state.abortController = null;
-  if (el.previewGenerating) el.previewGenerating.classList.add("hidden");
+  if (el.generatingModal) el.generatingModal.classList.add("hidden");
   const cancelBtn = document.getElementById("btn-cancel-generate");
   if (cancelBtn) cancelBtn.classList.add("hidden");
   if (isFinal !== false) updateProgressBar(100);

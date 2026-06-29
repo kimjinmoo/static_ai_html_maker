@@ -2576,3 +2576,17 @@ body {
   font-family: monospace; font-size: 11.5px; color: var(--text, #e8e8e8);
 }
 .setting-guide-steps a { color: var(--primary, #6366f1); }
+
+/* 생성 진행상황 모달 — preview-generating을 모달 안에서 정상 배치 */
+.generating-modal-content {
+  width: min(480px, 92vw);
+  padding: 0;
+  overflow: hidden;
+}
+.generating-modal-content .preview-generating {
+  position: static;
+  inset: auto;
+  background: transparent;
+  padding: 28px 24px;
+  max-height: 78vh;
+}

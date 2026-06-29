@@ -565,20 +565,6 @@
                   <p>여기에 미리보기가 표시됩니다</p>
                   <button class="btn-back" onclick="goToStep(2)">← 이전</button>
                 </div>
-                <div id="preview-generating" class="preview-generating hidden">
-                  <div class="generating-spinner">
-                    <div class="spinner-ring"></div>
-                    <div class="spinner-dot"></div>
-                  </div>
-                  <h3>홈페이지 생성 중</h3>
-                  <div id="generating-progress-list" class="generating-progress-list"></div>
-                  <p id="generating-status-text" class="generating-status-text">AI가 페이지를 만들고 있습니다...</p>
-                  <div class="generating-progress-bar-container">
-                    <div id="generating-progress-bar" class="generating-progress-bar"></div>
-                  </div>
-                  <span id="generating-progress-percent" class="generating-progress-percent">0%</span>
-                  <button id="btn-cancel-generate" class="btn-cancel-generate hidden" onclick="cancelGeneration()">✕ 작업 취소</button>
-                </div>
                 <iframe id="preview-frame" class="hidden" sandbox="allow-scripts"></iframe>
               </div>
               <!-- Review Panel -->
@@ -669,6 +655,26 @@
           >
             나중에
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 생성 진행상황 모달 -->
+    <div class="modal-overlay hidden" id="generating-modal">
+      <div class="modal-content generating-modal-content">
+        <div id="preview-generating" class="preview-generating">
+          <div class="generating-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-dot"></div>
+          </div>
+          <h3>홈페이지 생성 중</h3>
+          <div id="generating-progress-list" class="generating-progress-list"></div>
+          <p id="generating-status-text" class="generating-status-text">AI가 페이지를 만들고 있습니다...</p>
+          <div class="generating-progress-bar-container">
+            <div id="generating-progress-bar" class="generating-progress-bar"></div>
+          </div>
+          <span id="generating-progress-percent" class="generating-progress-percent">0%</span>
+          <button id="btn-cancel-generate" class="btn-cancel-generate hidden" onclick="cancelGeneration()">✕ 작업 취소</button>
         </div>
       </div>
     </div>
