@@ -25,12 +25,13 @@ def _extract_content_sections(raw):
     """AI 응답에서 body 콘텐츠 섹션만 추출 (===CONTENT_START/END=== 또는 body)."""
     if not raw:
         return ""
-    si = raw.find("===CONTENT_START===")
+    _START = "===CONTENT_START==="  # 19자 — 길이를 직접 계산해 off-by-one 방지
+    si = raw.find(_START)
     ei = raw.find("===CONTENT_END===", si + 1) if si != -1 else -1
     if si != -1 and ei != -1:
-        content = raw[si + 18:ei].strip()
+        content = raw[si + len(_START):ei].strip()
     elif si != -1:
-        content = raw[si + 18:].strip()
+        content = raw[si + len(_START):].strip()
     else:
         body_m = re.search(r'<body[^>]*>([\s\S]*)</body>', raw, re.IGNORECASE)
         content = body_m.group(1).strip() if body_m else raw.strip()
@@ -144,8 +145,10 @@ def chat_stream_v2():
             full = ""
             for tok in llama_chat_stream(messages):
                 tok = sanitize_surrogates(tok)
-                full += tok
-                yield sse_event(EventType.STATUS, tok, phase=phase)
+                full += tok  # 추출은 원본 누적분에서 — 마커/콘텐츠 보존
+                shown = filter_thinking_stream(tok)  # 모달에는 추론 과정 숨김
+                if shown:
+                    yield sse_event(EventType.STATUS, shown, phase=phase)
 
             if mode == Mode.GENERATE:
                 content = _remove_truncated_lines(_extract_content_sections(full))
