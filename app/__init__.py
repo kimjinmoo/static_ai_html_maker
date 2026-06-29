@@ -58,6 +58,9 @@ def create_app():
     from app.routes.stream_routes import stream_bp
     flask_app.register_blueprint(stream_bp)
 
+    from app.routes.settings_routes import settings_bp
+    flask_app.register_blueprint(settings_bp)
+
     from app.vulkan import auto_detect_vulkan_sdk
     auto_detect_vulkan_sdk()
 
