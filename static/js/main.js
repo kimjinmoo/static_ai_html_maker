@@ -819,11 +819,17 @@ async function collectGeneratedHtmlV2(body) {
   let finalHtml = "";
   let err = null;
   const multiPages = {};
+  let _prog = 0;
   const sse = createSSEReader(response);
   sse.on("status", (d) => {
     const p = d.payload;
-    if (p && p.menu_items) state.multiPageMenuItems = p.menu_items;
-    else if (typeof p === "string" && el.generatingStatusText) el.generatingStatusText.textContent = p.slice(0, 80);
+    if (p && p.menu_items) {
+      state.multiPageMenuItems = p.menu_items;
+    } else if (typeof p === "string") {
+      _prog = Math.min(92, _prog + 1.2);
+      updateProgressBar(_prog);
+      if (p.indexOf("<") === -1 && p.length < 60 && el.generatingStatusText) el.generatingStatusText.textContent = p;
+    }
   });
   sse.on("html", (d) => {
     const p = d.payload;
@@ -894,11 +900,23 @@ async function sendMessageV2(message, displayMessage, elementContextObj) {
       signal: state.abortController ? state.abortController.signal : undefined,
     });
 
+    let _prog = 0;
     const sse = createSSEReader(response);
     sse.on("status", (d) => {
       const p = d.payload;
-      if (typeof p === "string") { if (el.generatingStatusText) el.generatingStatusText.textContent = p.slice(0, 80); }
-      else if (p && p.menu_items) { state.multiPageMenuItems = p.menu_items; }
+      if (typeof p === "string") {
+        _prog = Math.min(92, _prog + 1.2);
+        updateProgressBar(_prog);
+        // HTML 토큰 노이즈는 숨기고 짧은 상태 메시지만 표시
+        if (p.indexOf("<") === -1 && p.length < 60 && el.generatingStatusText) {
+          el.generatingStatusText.textContent = p;
+        }
+      } else if (p && p.menu_items) {
+        state.multiPageMenuItems = p.menu_items;
+        _prog = Math.min(92, _prog + 4);
+        updateProgressBar(_prog);
+        if (el.generatingStatusText) el.generatingStatusText.textContent = `${p.menu_items.length}개 페이지 구성 중...`;
+      }
     });
     sse.on("chat", (d) => {
       chatText += (d.payload || "");
