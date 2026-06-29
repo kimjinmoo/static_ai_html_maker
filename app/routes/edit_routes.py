@@ -20,8 +20,26 @@ PATCH_SYSTEM = ("You convert an edit request on ONE selected HTML element into a
 VALID_OPS = ("text", "delete", "style", "href", "src", "html")
 
 
-def _build_prompt(message, el, design_section=""):
+def _build_prompt(message, el, design_section="", force_html=False):
     design_block = f"\n## 디자인 일관성 참고 (op=html 시 동일 디자인 유지)\n{design_section}\n" if design_section else ""
+    if force_html:
+        return f"""선택된 HTML 요소 **하나만** 다시 작성하세요. 페이지의 다른 부분은 절대 포함하지 마세요.
+
+## 선택된 요소
+- 태그: {el.get('tag', '')}
+- 현재 텍스트: {(el.get('text') or '')[:200]}
+- 현재 HTML: {(el.get('html') or '')[:800]}
+{design_block}
+## 사용자 요청
+"{message}"
+
+## 출력 (오직 JSON, 다른 텍스트 금지)
+{{"op": "html", "html": "<이 요소의 새 outerHTML 전체>"}}
+
+## 규칙
+- 반드시 op="html". 같은 태그로 시작하는 이 요소의 새 outerHTML만 "html"에 담으세요.
+- 위 디자인 참고의 scaffold 클래스를 사용하고, 색/폰트는 하드코딩하지 말고 기존 디자인을 따르세요.
+- 이 요소 범위만. 페이지 전체·다른 요소 금지. 마크다운 코드블록 금지."""
     return f"""선택된 HTML 요소 **하나만** 변경하는 최소 JSON 패치를 만드세요. 다른 요소·전체 레이아웃은 절대 건드리지 마세요.
 
 ## 선택된 요소
@@ -82,10 +100,11 @@ def edit_patch():
     el = data.get("element") or {}
     if not message or not el:
         return jsonify({"op": "complex"})
+    force_html = bool(data.get("force_html"))
     try:
         raw = llama_chat([
             {"role": "system", "content": PATCH_SYSTEM},
-            {"role": "user", "content": _build_prompt(message, el, _design_section(data))},
+            {"role": "user", "content": _build_prompt(message, el, _design_section(data), force_html)},
         ])
         return jsonify(_parse_patch(raw))
     except Exception as e:

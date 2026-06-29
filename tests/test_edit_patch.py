@@ -62,3 +62,15 @@ def test_design_section_used_when_design_system_present(monkeypatch):
                                     "design_system": {"template": "minimal_clean", "page_type": "company",
                                                       "scaffold_css": ".x{}", "design_content": "primary=#123", "brand": "B", "menu_items": []}})
     assert "primary=#123" in captured["user"] or ".container" in captured["user"]
+
+
+def test_force_html_prompt(monkeypatch):
+    captured = {}
+    def fake(messages):
+        captured["user"] = messages[-1]["content"]
+        return '{"op":"html","html":"<div>x</div>"}'
+    monkeypatch.setattr(er, "llama_chat", fake)
+    c = __import__("app", fromlist=["create_app"]).create_app().test_client()
+    body = c.post("/api/edit/patch", json={"message": "복잡", "element": {"tag": "div", "html": "<div>y</div>"}, "force_html": True}).get_json()
+    assert body["op"] == "html"
+    assert '반드시 op="html"' in captured["user"]

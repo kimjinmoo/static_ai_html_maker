@@ -1053,12 +1053,23 @@ async function sendMessageV2(message, displayMessage, elementContextObj) {
 
 // ── Fast-Edit (선택 요소만 즉시 패치, 전체 재생성 없음) ──
 // 고신뢰 패턴만 휴리스틱으로; 나머지는 작은 AI 패치(/api/edit/patch)로.
+const _DESIGN_WORDS = /(둥글|그림자|색|배경|크기|폰트|모던|스타일|정렬|여백|간격|패딩|마진|border|shadow|radius|gradient|굵게|크게|작게|넓게|좁게|테두리|레이아웃|배치|디자인)/i;
+
 function tryLocalPatch(message, elInfo) {
   const m = (message || "").trim();
   if (/(삭제|제거|없애|지워|지우|delete|remove)/i.test(m)) return { op: "delete" };
   // 따옴표로 감싼 새 텍스트
   const q = m.match(/["'“「]([^"'”」]{1,200})["'”」]/);
   if (q && /(바꿔|변경|수정|교체|텍스트|글자|문구|내용|제목|로|으로)/.test(m)) return { op: "text", text: q[1] };
+  // 디자인 단어가 없으면 텍스트 변경 패턴 추출
+  if (!_DESIGN_WORDS.test(m)) {
+    // "A를 B로 변경/바꿔"
+    let mm = m.match(/(?:을|를)\s*["'“「]?(.+?)["'”」]?\s*(?:으?로)\s*(?:변경|바꿔|바꿔줘|수정|교체|해줘|해)\s*$/);
+    if (mm && mm[1]) return { op: "text", text: mm[1].trim() };
+    // "B(으)로? (텍스트)? 변경" / "자전거 여행 변경"
+    mm = m.match(/^["'“「]?(.+?)["'”」]?\s*(?:으?로\s*)?(?:\(?텍스트\)?\s*)?(?:변경|바꿔|바꿔줘|수정|교체)\s*$/);
+    if (mm && mm[1] && mm[1].trim().length <= 80) return { op: "text", text: mm[1].trim() };
+  }
   // HEX 색상
   const hex = m.match(/#([0-9a-fA-F]{3,8})\b/);
   if (hex && /(색|배경|color|background|글자색|폰트)/i.test(m)) {
@@ -1114,6 +1125,16 @@ async function tryFastEdit(message, elInfo) {
       });
       patch = await r.json();
     } catch (e) { return false; }
+  }
+  // complex면 전체 재생성 대신 "요소만 재작성(op=html)" 강제 재시도
+  if (patch && patch.op === "complex" && elInfo && elInfo.wgen_id) {
+    try {
+      const r2 = await fetch("/api/edit/patch", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, element: elInfo, design_system: state.designSystem || null, force_html: true }),
+      });
+      patch = await r2.json();
+    } catch (e) { /* keep complex */ }
   }
   if (!patch || patch.op === "complex") return false;
   const ok = await applyPatchToPreview(patch, elInfo.wgen_id);
