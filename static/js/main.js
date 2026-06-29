@@ -772,46 +772,6 @@ function createSSEReader(response) {
 }
 
 // ── Send Message Flow ──
-async function decideStrategy(message, hasHtml, hasElement) {
-  try {
-    const res = await fetch("/api/decide_strategy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, has_html: hasHtml, has_element: hasElement }),
-    });
-    const data = await res.json();
-    return data.strategy || "edit";
-  } catch (e) {
-    console.warn("Strategy fetch failed:", e);
-    const m = message.toLowerCase();
-    if (m.includes("\uc18c\uac1c") || m.includes("1\uc7a5") || m.includes("\ud55c \uc7a5") || m.includes("\ub9cc\ub4e4")) return "direct";
-    if (m.includes("\uc0c9\uc0c1") || m.includes("\uc218\uc815") || m.includes("\ubc14\uafb8")) return "edit";
-    if (m.includes("\uc548\ub155") || m.includes("\uac10\uc0ac") || m.includes("\ubb50")) return "chat";
-    return "edit";
-  }
-}
-
-async function callChatStream(messages, onToken, onReasoning, onDone) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
-  try {
-    const res = await fetch("/api/chat/stream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(messages),
-      signal: controller.signal,
-    });
-    const sse = createSSEReader(res);
-    sse.on("content", (data) => { if (onToken) onToken(data.content); });
-    sse.on("reasoning", (data) => { if (onReasoning) onReasoning(data.content); });
-    sse.on("done", () => { if (onDone) onDone(); });
-    sse.on("error", (data) => { throw new Error(data.error); });
-    await sse.start();
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 async function generateProjectId() {
   state.currentProjectId = crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Date.now().toString(36);
 }
@@ -834,335 +794,40 @@ async function initProjectStructure(message) {
   } catch (e) { console.warn("Project init failed:", e); }
 }
 
-async function sendMessageDirect(message, assistantDiv) {
-  if (!state.currentProjectId) {
-    await generateProjectId();
-    if (!state.projectTitle) state.projectTitle = message.slice(0, 30) + (message.length > 30 ? "..." : "");
-    await initProjectStructure(message);
-  }
-  const directBody = {
-    message,
-    history: state.chatHistory.slice(-5),
-    page_type: state.selectedType,
-    template: state.selectedTemplate,
-    design_content: state.selectedDesignContent,
-    current_html: "",
-    element_context: "",
-    is_new_page: false,
-    chat_only: false,
-    strategy: "direct",
-  };
-  const res = await fetch("/api/chat/stream", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(directBody),
-    signal: state.abortController?.signal,
-  });
-  const sse = createSSEReader(res);
-  let fullContent = "";
-  let lastPreviewUpdate = 0;
-  const PREVIEW_THROTTLE_MS = 400;
-  let fixedHtml = null;
-
-  assistantDiv.innerHTML = "";
-
-  sse.on("content", (t) => {
-    const cText = t.content || t.text || "";
-    if (cText) {
-      fullContent += cText;
-      const now = Date.now();
-      if (now - lastPreviewUpdate > PREVIEW_THROTTLE_MS) {
-        lastPreviewUpdate = now;
-        const streamingHtml = extractHtmlStreaming(fullContent) || extractHtmlMarker(fullContent);
-        if (streamingHtml && streamingHtml.length > 100) {
-          state.generatedHtml = streamingHtml;
-          updatePreview(streamingHtml, true);
-        }
-      }
-    }
-  });
-
-  sse.on("html_fix", (d) => {
-    if (d.content) {
-      fixedHtml = d.content;
-      state.generatedHtml = fixedHtml;
-      updatePreview(fixedHtml, false);
-    }
-  });
-
-  sse.on("stream_end", async () => {
-    if (!fullContent || fullContent.trim() === "") { throw new Error("AI 응답이 비어있습니다"); }
-    if (fixedHtml) {
-      state.generatedHtml = fixedHtml;
-      updatePreview(fixedHtml, false);
-    } else {
-      const extracted = extractHtmlMarker(fullContent) || extractHtml(fullContent);
-      if (extracted) {
-        state.generatedHtml = extracted;
-        updatePreview(state.generatedHtml, false);
-      } else {
-        const di = fullContent.indexOf("<!DOCTYPE html>");
-        if (di !== -1) {
-          let raw = fullContent.slice(di).trim();
-          const eiTag = raw.indexOf("===HTML_END===");
-          if (eiTag !== -1) raw = raw.slice(0, eiTag).trim();
-          state.generatedHtml = raw;
-          updatePreview(state.generatedHtml, false);
-        }
-      }
-    }
-    if (state.generatedHtml && state.currentProjectId) {
-      await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: "index.html", content: state.generatedHtml }),
-      }).catch(() => {});
-      loadFileTree(state.currentProjectId);
-    }
-    hideGenerating();
-    assistantDiv.innerHTML = "✅ 홈페이지 생성 완료! 오른쪽 미리보기를 확인하세요.";
-    state.chatHistory.push({ role: "assistant", content: "홈페이지를 생성했습니다." });
-    saveProject();
-    enableReviewBtn();
-  });
-  await sse.start();
-}
-
-async function sendMessageModular(message, assistantDiv, history, currentHtml, isNewPage, skipFinalActions, multiPage) {
-  if (!history) state.chatHistory.push({ role: "user", content: message });
-  if (!state.currentProjectId) await generateProjectId();
-  if (!state.projectTitle) state.projectTitle = message.slice(0, 30) + (message.length > 30 ? "..." : "");
-  await initProjectStructure(message);
-
-  const res = await fetch("/api/chat/stream/modular", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    signal: state.abortController?.signal,
-    body: JSON.stringify({
-      message,
-      page_type: state.selectedType,
-      template: state.selectedTemplate,
-      design_content: state.selectedDesignContent,
-      history: history || state.chatHistory.slice(0, -1),
-      current_html: currentHtml || state.generatedHtml || "",
-      is_new_page: isNewPage || false,
-      multi_page: !!multiPage,
-      direct_mode: !!state.directMode,
-    }),
-  });
-
-  const sse = createSSEReader(res);
-  let modules = [];
-  let moduleHtmls = {};
-  let completedCount = 0;
-  let planText = "";
-  let currentModuleId = "";
-  let allPagesHtml = {};
-  let currentPageName = "";
-  let currentPageIdx = 0;
-  let currentPageModules = {};
-  let totalPages = 0;
-  let mpMenuItems = [];
-  let previewThrottle = 0;
-  const PREVIEW_THROTTLE_MS = 400;
-
-  sse.on("error", (d) => {
-    const msg = d.content || d.error || "\uc624\ub958";
-    if (el.generatingStatusText) {
-      el.generatingStatusText.textContent = `\u26a0\ufe0f ${msg}`;
-    }
-    assistantDiv.innerHTML = `\u26a0\ufe0f ${msg}`;
-    scrollToBottom("messages");
-  });
-
-  sse.on("multi_plan", (d) => {
-    mpMenuItems = d.menu_items || [];
-    state.multiPagePlanPages = d.pages || [];
-    state.multiPageMode = state.multiPagePlanPages.length > 1;
-    totalPages = state.multiPagePlanPages.length;
-    state.multiPageMenuItems = mpMenuItems;
-    // Mark all page files as generating (preserve CSS/JS from showGenerating)
-    (d.pages || []).forEach(pg => { state.generatingFiles[pg.file] = true; });
-    assistantDiv.innerHTML = `\ud83d\udccb \uba40\ud2f0\ud398\uc774\uc9c0 \uacc4\ud68d \uc644\ub8cc (${totalPages}\uac1c \ud398\uc774\uc9c0)<br><span style="color: var(--text-muted); font-size: 0.85rem;">\uba54\ub274: ${mpMenuItems.join(" | ")}</span>`;
-    scrollToBottom("messages");
-    // Create all page placeholder files immediately (CSS/JS already created by showGenerating)
-    if (state.currentProjectId) {
-      Promise.all((d.pages || []).map(pg => {
-        const ph = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${pg.title || pg.name || ''}</title><link rel="stylesheet" href="assets/css/style.css"></head><body><p>${pg.file || pg.name} \uc0dd\uc131 \uc911...</p><script src="assets/js/main.js"></script></body></html>`;
-        return fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: pg.file, content: ph }),
-        }).catch(() => {});
-      })).then(() => loadFileTree(state.currentProjectId));
-    }
-    updateMultiPageProgress(0, {}, 0, totalPages, 0, (d.pages?.[0] || {}).name || "");
-    updateProgressBar(5);
-  });
-
-  sse.on("page_start", (d) => {
-    currentPageName = d.name;
-    currentPageIdx = d.index || 0;
-    currentPageModules = {};
-    const pageCount = d.total || totalPages || 0;
-    assistantDiv.innerHTML = `\ud83d\udcc4 \ud398\uc774\uc9c0 \uc0dd\uc131 \uc911: <strong>${d.index + 1}/${pageCount}</strong> \u2014 ${d.file || d.name}`;
-    scrollToBottom("messages");
-    updateMultiPageProgress(0, currentPageModules, 0, pageCount, currentPageIdx, d.file || d.name);
-  });
-
-  sse.on("page_complete", async (d) => {
-    const html = d.html || "";
-    allPagesHtml[d.file] = html;
-    delete state.generatingFiles[d.file];
-    if (html) updatePreview(html.replace(/===MODULE_START===|===MODULE_END===/g, ""), false);
-    if (state.currentProjectId && html) {
-      await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: d.file, content: html }),
-      }).then(r => r.ok && loadFileTree(state.currentProjectId)).catch(() => {});
-    }
-    updateProgressBar(((d.index + 1) / d.total) * 100);
-  });
-
-  sse.on("multi_done", async (d) => {
-    if (d.pages && Object.keys(d.pages).length > 0) allPagesHtml = d.pages;
-    state.generatedHtml = (allPagesHtml["index.html"] || "").replace(/===MODULE_START===|===MODULE_END===/g, "");
-    state.multiPageMode = true;
-    state.generatingFiles = {};
-    state.multiPagePlanPages = Object.keys(allPagesHtml).map(f => ({ name: f.replace(/\.html$/, "").replace("pages/", ""), file: f }));
-    if (state.generatedHtml) updatePreview(state.generatedHtml, false);
-    if (!skipFinalActions) {
-      hideGenerating();
-      const pageList = Object.keys(allPagesHtml).join(", ");
-      assistantDiv.innerHTML = `\u2705 \uba40\ud2f0\ud398\uc774\uc9c0 \uc0dd\uc131 \uc644\ub8cc! (${totalPages}\uac1c \ud398\uc774\uc9c0: ${pageList})`;
-      state.chatHistory.push({ role: "assistant", content: `\uba40\ud2f0\ud398\uc774\uc9c0 \uc0dd\uc131 \uc644\ub8cc (${totalPages}\ud398\uc774\uc9c0: ${pageList})` });
-      try {
-        await fetch(`/api/projects/${state.currentProjectId}/save_multipage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pages: allPagesHtml, title: state.projectTitle, page_type: state.selectedType, template: state.selectedTemplate, history: state.chatHistory, design_content: state.selectedDesignContent, menu_items: mpMenuItems, design_system: state.designSystem }),
-        });
-        // post-generation AI review 제거됨: 백엔드에서 결정적 조립 + ensure_complete_html로 보정
-      } catch (e) { console.warn("Multi-page save failed:", e); }
-      enableReviewBtn();
-      loadFileTree(state.currentProjectId);
-      loadProjects();
-    }
-  });
-
-  sse.on("module_start", (d) => {
-    if (d.page) {
-      currentModuleId = d.id;
-      if (!currentPageModules[d.page]) currentPageModules[d.page] = {};
-      assistantDiv.innerHTML = `\u23f3 ${d.page} > \ubaa8\ub4c8 <strong>${d.index + 1}/${d.total}</strong> - ${d.id}`;
-      scrollToBottom("messages");
-      updateMultiPageProgress(0, currentPageModules[d.page], d.total, totalPages, currentPageIdx, d.page);
-    } else {
-      currentModuleId = d.id;
-      const name = modules[d.index]?.description || d.id;
-      assistantDiv.innerHTML = `\u23f3 \ubaa8\ub4c8 \uc0dd\uc131 \uc911: <strong>${d.index + 1}/${d.total}</strong> - ${name}`;
-      scrollToBottom("messages");
-      updateModularProgress(Object.keys(moduleHtmls), completedCount, modules);
-    }
-  });
-
-  sse.on("module_token", (d) => {
-    if (!moduleHtmls[currentModuleId]) moduleHtmls[currentModuleId] = "";
-    moduleHtmls[currentModuleId] += d.content;
-    // Real-time preview streaming for fast single-page mode
-    const now = Date.now();
-    if (currentModuleId === "full_page" && now - previewThrottle > PREVIEW_THROTTLE_MS) {
-      previewThrottle = now;
-      const raw = moduleHtmls["full_page"] || "";
-      const streamingHtml = extractHtmlStreaming(raw) || extractHtmlMarker(raw);
-      if (streamingHtml && streamingHtml.length > 100) {
-        state.generatedHtml = streamingHtml;
-        updatePreview(streamingHtml, true);
-      }
-    }
-  });
-
-  sse.on("module_complete", (d) => {
-    if (d.speed) _lastSpeed = `${d.speed} tok/s`;
-    if (d.page) {
-      currentModuleId = "";
-      if (!currentPageModules[d.page]) currentPageModules[d.page] = {};
-      currentPageModules[d.page][d.id] = true;
-      const doneMods = Object.keys(currentPageModules[d.page]).length;
-      updateMultiPageProgress(doneMods, currentPageModules[d.page], d.total || totalPages, totalPages, currentPageIdx, d.page);
-    } else {
-      currentModuleId = "";
-      completedCount++;
-      const name = modules[d.index]?.description || d.id;
-      assistantDiv.innerHTML = `\u2705 ${completedCount}/${modules.length} \uc644\ub8cc \u2014 ${name} ${_lastSpeed ? `(${_lastSpeed})` : ""}`;
-      scrollToBottom("messages");
-      let raw = moduleHtmls[d.id] || "";
-      const ms = raw.indexOf("===MODULE_START===");
-      if (ms !== -1) raw = raw.substring(ms + 19);
-      const me = raw.indexOf("===MODULE_END===");
-      if (me !== -1) raw = raw.substring(0, me);
-      raw = raw.trim();
-      if (raw.startsWith("```")) { const rl = raw.split("\n"); rl.shift(); if (rl.length && rl[rl.length - 1].trim() === "```") rl.pop(); raw = rl.join("\n").trim(); }
-      moduleHtmls[d.id] = raw;
-      updateModularProgress(Object.keys(moduleHtmls), completedCount, modules);
-    }
-  });
-
-  sse.on("plan_token", (d) => {
-    planText += d.content;
-    // Don't show raw plan text — keep the initial "planning" status
-  });
-
-  sse.on("plan", (d) => {
-    modules = d.modules || [];
-    state.generatingFiles["index.html"] = true;
-    assistantDiv.innerHTML = `\ud83d\udccb \ubaa8\ub4c8 \uacc4\ud68d \uc644\ub8cc (${modules.length}\uac1c \ubaa8\ub4c8)`;
-    scrollToBottom("messages");
-    updateModularProgress([], 0, modules);
-    updateProgressBar(5);
-  });
-
-  sse.on("done", async (d) => {
-    state.generatingFiles = {};
-    state.generatedHtml = (d.html || state.generatedHtml).replace(/===MODULE_START===|===MODULE_END===/g, "");
-    if (!state.generatedHtml || state.generatedHtml.length < 50) {
-      let fallback = "";
-      for (const mod of modules) { if (moduleHtmls[mod.id]) fallback += moduleHtmls[mod.id] + "\n"; }
-      if (fallback.length > 50) state.generatedHtml = fallback;
-    }
-    if (state.generatedHtml && state.generatedHtml.length > 10) {
-      updatePreview(state.generatedHtml, false);
-    }
-    if (!skipFinalActions) {
-      if (state.currentProjectId && state.generatedHtml) {
-        await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: "index.html", content: state.generatedHtml }),
-        }).catch(() => {});
-        // post-generation AI review 제거됨: 백엔드에서 결정적 조립 + ensure_complete_html로 보정
-      }
-      hideGenerating();
-      assistantDiv.innerHTML = `\u2705 \ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc644\ub8cc! (${modules.length}\uac1c \ubaa8\ub4c8)`;
-      state.chatHistory.push({ role: "assistant", content: `\ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc644\ub8cc (${modules.length}\uac1c \ubaa8\ub4c8)` });
-      saveProject();
-      enableReviewBtn();
-    }
-  });
-
-  sse.on("error", (d) => {
-    assistantDiv.innerHTML = `<span style="color: var(--error);">\u26a0\ufe0f \uc624\ub958: ${d.content}</span>`;
-    hideGenerating();
-  });
-
-  await sse.start();
-}
-
 function pushHtmlSnapshot() {
   if (state.generatedHtml) {
     state.htmlHistory.push(state.generatedHtml);
     if (state.htmlHistory.length > 20) state.htmlHistory.shift();
   }
+}
+
+// v2 생성 결과 HTML만 수집 (채팅/히스토리/저장 부수효과 없음).
+async function collectGeneratedHtmlV2(body) {
+  const response = await fetch("/api/chat/stream/v2", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: state.abortController ? state.abortController.signal : undefined,
+  });
+  let finalHtml = "";
+  let err = null;
+  const multiPages = {};
+  const sse = createSSEReader(response);
+  sse.on("status", (d) => {
+    const p = d.payload;
+    if (p && p.menu_items) state.multiPageMenuItems = p.menu_items;
+    else if (typeof p === "string" && el.generatingStatusText) el.generatingStatusText.textContent = p.slice(0, 80);
+  });
+  sse.on("html", (d) => {
+    const p = d.payload;
+    if (typeof p === "string") finalHtml = p;
+    else if (p && p.file) { multiPages[p.file] = p.html; if (p.file === "index.html") finalHtml = p.html; }
+  });
+  sse.on("done", (d) => { const p = d && d.payload; if (p && p.html) finalHtml = p.html; });
+  sse.on("error", (d) => { err = d.payload; });
+  await sse.start();
+  if (err) throw new Error(err);
+  return { html: finalHtml, multiPages };
 }
 
 // ── 모드 셀렉터 (자동 추천 + 수동 덮어쓰기) ──
@@ -1356,7 +1021,6 @@ async function sendMessage() {
   const isFirstGeneration = !state.generatedHtml && !state.selectedElement && !state.pendingElementAction;
   input.value = "";
   input.style.height = "auto";
-  const savedHtml = state.generatedHtml;
 
   let displayMessage = message;
   let elementContext = "";
@@ -1393,244 +1057,6 @@ async function sendMessage() {
   if (isFirstGeneration) state.chatHistory.push({ role: "user", content: displayMessage });
   await sendMessageV2(message, displayMessage, state.selectedElement || null);
   return;
-
-  try { // eslint-disable-line no-unreachable — 레거시 경로(Task 5.1에서 제거)
-    if (isFirstGeneration) {
-      const isMulti = detectMultiPage(message) !== null ? detectMultiPage(message) : state.multiPageMode;
-      if (state.directMode && !isMulti) {
-        showGenerating(false);
-        const assistantDiv = addMessage("messages", "assistant", "⏳ 홈페이지 단일 생성 중...");
-        await sendMessageDirect(message, assistantDiv);
-      } else {
-        showGenerating(false);
-        const assistantDiv = addMessage("messages", "assistant", "⏳ 홈페이지 생성 중...");
-        await sendMessageModular(message, assistantDiv, null, null, false, false, isMulti);
-      }
-    } else {
-      const strategy = await decideStrategy(message, !!savedHtml, !!state.selectedElement);
-      if (strategy === "new_page" && savedHtml) {
-        state.generatedHtml = "";
-        state.reactRejected = false;
-        showGenerating(true);
-        const assistantDiv = addMessage("messages", "assistant", "\u23f3 \uc0c8 \ud398\uc774\uc9c0 \uc0dd\uc131 \uc911...");
-        await sendMessageModular(message, assistantDiv, null, savedHtml, true, true, false);
-        if (state.generatedHtml && state.currentProjectId) {
-          const pageName = "page_" + Date.now().toString(36).slice(-4) + ".html";
-          const pageContent = state.generatedHtml;
-          state.generatedHtml = savedHtml;
-          updatePreview(state.generatedHtml, false);
-          try {
-            const pagePath = "pages/" + pageName;
-            await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ path: pagePath, content: pageContent }),
-            });
-            state.multiPageHtmls[pagePath] = pageContent;
-            assistantDiv.innerHTML = "\u2705 \uc0c8 \ud398\uc774\uc9c0 \u201c" + pageName + "\u201d\uac00 \uc0dd\uc131\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \uc624\ub978\ucabd \ud30c\uc77c \ud2b8\ub9ac\uc5d0\uc11c \ud655\uc778\ud558\uace0, \ubbf8\ub9ac\ubcf4\uae30\uc5d0\uc11c \uc694\uc18c\ub97c \uc120\ud0dd\ud558\uc5ec \ub9c1\ud06c\ub97c \uac78\uc5b4\uc8fc\uc138\uc694.";
-            saveProject();
-            enableReviewBtn();
-            loadFileTree(state.currentProjectId);
-          } catch (e) {
-            assistantDiv.innerHTML = "\u2705 \uc0c8 \ud398\uc774\uc9c0\uac00 \uc0dd\uc131\ub418\uc5c8\uc9c0\ub9cc \ud30c\uc77c \uc800\uc7a5\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4: " + e.message;
-            state.generatedHtml = savedHtml;
-            updatePreview(state.generatedHtml, false);
-          }
-        } else {
-          state.generatedHtml = savedHtml;
-          updatePreview(state.generatedHtml, false);
-          assistantDiv.innerHTML = "\uc0c8 \ud398\uc774\uc9c0\ub97c \uc0dd\uc131\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4. \ubbf8\ub9ac\ubcf4\uae30\uc5d0\uc11c \uc694\uc18c\ub97c \uc120\ud0dd\ud558\uace0 \uc2e0\uaddc \ud398\uc774\uc9c0 \uc0dd\uc131\uc744 \uc774\uc6a9\ud558\uc138\uc694.";
-          hideGenerating();
-        }
-      } else if (strategy === "modular") {
-        showGenerating(false);
-        const assistantDiv = addMessage("messages", "assistant", "\u23f3 \ud398\uc774\uc9c0 \uc7ac\uc0dd\uc131 \uc911...");
-        const mp = state.multiPageMode || (state.multiPagePlanPages && state.multiPagePlanPages.length > 1);
-        await sendMessageModular(message, assistantDiv, state.chatHistory.slice(-5), savedHtml || "", false, false, mp);
-        if (!state.generatedHtml && savedHtml) { state.generatedHtml = savedHtml; updatePreview(state.generatedHtml, false); }
-      } else if (strategy === "chat") {
-        const assistantDiv = addMessage("messages", "assistant", "\ud83d\udcac \ub2f5\ubcc0 \uc911...");
-        assistantDiv.innerHTML = "";
-        try {
-          await callChatStream({
-            message,
-            history: state.chatHistory.slice(-5),
-            page_type: state.selectedType,
-            template: state.selectedTemplate,
-            design_content: state.selectedDesignContent,
-    current_html: state.generatedHtml ? state.generatedHtml.substring(0, 20000) : "",
-            element_context: "",
-            is_new_page: false,
-            chat_only: true,
-          }, (token) => {
-            assistantDiv.innerHTML += token;
-            scrollToBottom("messages");
-          }, null, () => {
-            assistantDiv.innerHTML = assistantDiv.innerHTML.replace(/\n\n$/, "");
-          });
-        } catch (e) {
-          assistantDiv.innerHTML = `<span style="color: var(--error);">\u26a0\ufe0f \uc624\ub958: ${e.message}</span>`;
-        }
-        state.generatedHtml = savedHtml;
-      } else {
-        // edit / direct
-        showGenerating(true);
-        const assistantDiv = addMessage("messages", "assistant", "\u23f3 \uc218\uc815 \uc911...");
-        if (!state.currentProjectId) {
-          await generateProjectId();
-          if (!state.projectTitle) state.projectTitle = message.slice(0, 30) + (message.length > 30 ? "..." : "");
-          await initProjectStructure(message);
-        }
-        state.reactRejected = false;
-
-        let attempts = 0;
-        while (attempts < 5) {
-          let streamDone = false;
-          try {
-            const response = await fetch("/api/chat/stream", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                message,
-                history: state.chatHistory.slice(-5),
-                page_type: state.selectedType,
-                template: state.selectedTemplate,
-                design_content: state.selectedDesignContent,
-                current_html: savedHtml ? savedHtml.substring(0, 3000) : "",
-                current_css: "",
-                current_js: "",
-                element_context: elementContext,
-                is_new_page: false,
-              }),
-            });
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let fullContent = "";
-            let fullReasoning = "";
-            let lastTokenTime = Date.now();
-            let lastPreviewTs = 0;
-
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done || streamDone) break;
-              const chunk = decoder.decode(value);
-              for (const line of chunk.split("\n")) {
-                if (!line.startsWith("data: ")) continue;
-                const d = line.slice(6);
-                if (d === "[DONE]") { streamDone = true; break; }
-                try {
-                  const p = JSON.parse(d);
-                  if (p.error) { streamDone = true; break; }
-                  if (p.content) {
-                    if (p.type === "reasoning") fullReasoning += p.content;
-                    else {
-                      fullContent += p.content;
-                      // Streaming preview
-                      const now = Date.now();
-                      if (now - lastPreviewTs > 400) {
-                        lastPreviewTs = now;
-                        const sp = extractHtmlStreaming(fullContent) || extractHtmlMarker(fullContent);
-                        if (sp && sp.length > 100) {
-                          state.generatedHtml = sp;
-                          updatePreview(sp, true);
-                        }
-                      }
-                    }
-                    lastTokenTime = Date.now();
-                  }
-                } catch (e) {}
-              }
-              if (Date.now() - lastTokenTime > 10000 && fullContent.length > 0) break;
-            }
-
-            if (!fullContent || fullContent.trim() === "") {
-              attempts++;
-              await new Promise(r => setTimeout(r, 1000));
-              continue;
-            }
-
-            const hasHtml = fullContent.includes("===HTML_START===") || fullContent.includes("<!DOCTYPE");
-            state.chatHistory.push({ role: "assistant", content: hasHtml ? "\ud648\ud398\uc774\uc9c0\ub97c \uc0dd\uc131\ud588\uc2b5\ub2c8\ub2e4. \ubbf8\ub9ac\ubcf4\uae30\ub97c \ud655\uc778\ud558\uc138\uc694." : stripThinkingBlock(fullContent) });
-
-            state.generatedHtml = null;
-            const extracted = extractHtmlMarker(fullContent) || extractHtml(fullContent);
-            if (extracted) {
-              state.generatedHtml = extracted;
-            } else if (fullContent.includes("===HTML_START===")) {
-              const si = fullContent.indexOf("===HTML_START===") + 16;
-              const ei = fullContent.indexOf("===HTML_END===");
-              const raw = (ei > si ? fullContent.slice(si, ei) : fullContent.slice(si)).trim();
-              const force = stripCodeFences(raw);
-              if (force && force.length > 50) {
-                const san = sanitizeReactHtml(force);
-                if (san.html) state.generatedHtml = san.html;
-              }
-            } else {
-              const di = fullContent.indexOf("<!DOCTYPE html>");
-              if (di !== -1) {
-                let raw = fullContent.slice(di).trim();
-                const eiTag = raw.indexOf("===HTML_END===");
-                if (eiTag !== -1) raw = raw.slice(0, eiTag).trim();
-                const san = sanitizeReactHtml(raw);
-                if (san.html) state.generatedHtml = san.html;
-              }
-            }
-
-            if (state.generatedHtml) {
-              updatePreview(state.generatedHtml, false);
-              if (state.currentProjectId) {
-                await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ path: "index.html", content: state.generatedHtml }),
-                });
-                loadFileTree(state.currentProjectId);
-              }
-              hideGenerating();
-              state.selectedElement = null;
-              state.pendingElementAction = false;
-              assistantDiv.innerHTML = "<div>\u2705 \ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc644\ub8cc! \uc624\ub978\ucabd \ubbf8\ub9ac\ubcf4\uae30\ub97c \ud655\uc778\ud558\uc138\uc694.</div>";
-              saveProject();
-              enableReviewBtn();
-              break;
-            } else if (state.reactRejected) {
-              state.chatHistory.pop();
-              state.reactRejected = false;
-              state.generatedHtml = null;
-              attempts++;
-              await new Promise(r => setTimeout(r, 500));
-              continue;
-            } else {
-              const clean = stripThinkingBlock(fullContent);
-              if (!state.generatedHtml && savedHtml) { state.generatedHtml = savedHtml; updatePreview(state.generatedHtml, false); }
-              assistantDiv.innerHTML = formatContent(clean);
-              hideGenerating();
-              break;
-            }
-          } catch (e) {
-            attempts++;
-            await new Promise(r => setTimeout(r, 1000));
-            if (attempts >= 5) {
-              assistantDiv.innerHTML = `<span style="color: var(--error);">\u26a0\ufe0f \ub124\ud2b8\uc6cc\ud06c \uc624\ub958: ${e.message}</span>`;
-              if (!state.generatedHtml && savedHtml) { state.generatedHtml = savedHtml; updatePreview(state.generatedHtml, false); }
-              hideGenerating();
-            }
-          }
-        }
-      }
-    }
-  } catch (e) {
-    const msgDiv = el.messages.querySelector(".message.assistant:last-child .message-content");
-    if (msgDiv) msgDiv.innerHTML = `<span style="color: var(--error);">\u26a0\ufe0f \uc624\ub958: ${e.message}</span>`;
-    hideGenerating();
-  }
-
-  if (!state.generatedHtml && savedHtml) { state.generatedHtml = savedHtml; updatePreview(state.generatedHtml, false); }
-
-  state.pendingElementAction = false;
-  state.isGenerating = false;
-  el.sendBtn.disabled = false;
-  el.typingIndicator.classList.add("hidden");
 }
 
 // ── Auto-send (element actions, new page) ──
@@ -1639,53 +1065,72 @@ async function sendMessageAuto(message) {
   if (!message || state.isGenerating) return;
   if (!state.modelReady) { showDownloadModal(); return; }
   pushHtmlSnapshot();
-  if (!state.pendingPageName) state.generatedHtml = "";
   state.isGenerating = true;
   el.sendBtn.disabled = true;
   el.typingIndicator.classList.remove("hidden");
   scrollToBottom("messages");
-  showGenerating();
-  const autoStatusText = state.pendingPageName ? "\u23f3 \uc0c8 \ud398\uc774\uc9c0 \uc0dd\uc131 \uc911..." : "\u23f3 \uc218\uc815 \uc911...";
-  const assistantDiv = addMessage("messages", "assistant", autoStatusText);
+  showGenerating(false);
+  const assistantDiv = addMessage("messages", "assistant", "⏳ 새 페이지 생성 중...");
 
-  await sendMessageModular(message, assistantDiv, state.chatHistory.slice(0, -1), state.generatedHtml, !!state.pendingPageName, true);
+  // 메인과 동일한 design_system으로 새 페이지 생성 (디자인 통일)
+  const designSystem = Object.assign(
+    { template: "", page_type: "", design_content: "", scaffold_css: "", brand: "WebGen AI", menu_items: [] },
+    state.designSystem || {});
+  designSystem.template = state.selectedTemplate || designSystem.template;
+  designSystem.page_type = state.selectedType || designSystem.page_type;
+  if (state.selectedDesignContent) designSystem.design_content = state.selectedDesignContent;
+  if (state.projectTitle) designSystem.brand = state.projectTitle;
 
-  state.chatHistory.push({ role: "assistant", content: "\uc0dd\uc131 \uc644\ub8cc" });
+  try {
+    const { html: newPageHtml } = await collectGeneratedHtmlV2({
+      message, mode: "generate", design_system: designSystem,
+      history: state.chatHistory.slice(-5), current_html: "", multi_page: false,
+      page_type: state.selectedType, template: state.selectedTemplate,
+    });
+    state.chatHistory.push({ role: "assistant", content: "생성 완료" });
 
-  if (state.pendingPageName && state.generatedHtml && state.pendingMainHtml) {
-    try {
+    if (state.pendingPageName && newPageHtml && state.pendingMainHtml) {
       const pagePath = `pages/${state.pendingPageName}`;
       await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: pagePath, content: state.generatedHtml }),
-      });
-      state.multiPageHtmls[pagePath] = state.generatedHtml;
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: pagePath, content: newPageHtml }),
+      }).catch(() => {});
+      state.multiPageHtmls[pagePath] = newPageHtml;
       const linkPath = pagePath;
       const escapedText = state.pendingLinkTextValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const linkRegex = new RegExp(`(<a\\b[^>]*>\\s*)${escapedText}(\\s*</a>)`, "i");
-      const replaced = state.pendingMainHtml.replace(linkRegex, (full, openTag, closeTag) => {
-        return openTag.replace(/href=["'][^"']*["']/i, `href="${linkPath}"`) + state.pendingLinkTextValue + closeTag;
-      });
-      state.generatedHtml = replaced !== state.pendingMainHtml ? replaced : state.pendingMainHtml.replace(new RegExp(`href=["']${escapedText}["']`), `href="${linkPath}"`);
+      const replaced = state.pendingMainHtml.replace(linkRegex, (full, openTag, closeTag) =>
+        openTag.replace(/href=["'][^"']*["']/i, `href="${linkPath}"`) + state.pendingLinkTextValue + closeTag);
+      state.generatedHtml = replaced !== state.pendingMainHtml ? replaced
+        : state.pendingMainHtml.replace(new RegExp(`href=["']${escapedText}["']`), `href="${linkPath}"`);
       updatePreview(state.generatedHtml, false);
-      hideGenerating();
-      assistantDiv.innerHTML = `\u2705 \ud398\uc774\uc9c0 "${state.pendingPageName}" \uc0dd\uc131 \uc644\ub8cc!`;
-    } catch (e) {
-      assistantDiv.innerHTML = "\u26a0\ufe0f \ud398\uc774\uc9c0 \uc0dd\uc131\uc740 \uc644\ub8cc\ub418\uc5c8\uc9c0\ub9cc \uc800\uc7a5\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4.";
+      if (state.currentProjectId) {
+        await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: "index.html", content: state.generatedHtml }),
+        }).catch(() => {});
+      }
+      assistantDiv.innerHTML = `✅ 페이지 "${state.pendingPageName}" 생성 완료!`;
+      state.designSystem = designSystem;
+      saveProject();
+      enableReviewBtn();
+      loadFileTree(state.currentProjectId);
+    } else {
+      assistantDiv.innerHTML = "⚠️ 새 페이지를 생성하지 못했습니다.";
     }
+  } catch (e) {
+    assistantDiv.innerHTML = `<span style="color: var(--error);">⚠️ 오류: ${e.message}</span>`;
+  } finally {
     state.pendingPageName = "";
     state.pendingMainHtml = "";
     state.pendingLinkHrefValue = "";
     state.pendingLinkTextValue = "";
-    saveProject();
-    enableReviewBtn();
-    loadFileTree(state.currentProjectId);
+    state.pendingElementAction = false;
+    state.isGenerating = false;
+    el.sendBtn.disabled = false;
+    el.typingIndicator.classList.add("hidden");
+    hideGenerating();
   }
-  state.pendingElementAction = false;
-  state.isGenerating = false;
-  el.sendBtn.disabled = false;
-  el.typingIndicator.classList.add("hidden");
 }
 
 // ── Selected Element Bar ──
