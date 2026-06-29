@@ -690,6 +690,18 @@
           </div>
 
           <div class="setting-group" id="set-group-ollama">
+            <div class="setting-guide">
+              <div class="setting-guide-title">
+                <span>🦙 Ollama 연동 방법</span>
+                <a href="https://ollama.com" target="_blank" rel="noopener" class="setting-guide-link" title="Ollama 공식 사이트">❓ 가이드</a>
+              </div>
+              <ol class="setting-guide-steps">
+                <li><a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com</a> 에서 Ollama 설치 후 실행</li>
+                <li>터미널에서 모델 받기: <code>ollama pull qwen2.5-coder:7b</code></li>
+                <li>주소는 보통 그대로 (<code>http://localhost:11434</code>)</li>
+                <li>모델명 입력 → <b>연결 테스트</b> → <b>저장 및 적용</b></li>
+              </ol>
+            </div>
             <div class="setting-row">
               <label class="setting-label" for="set-ollama-host">Ollama 주소</label>
               <input id="set-ollama-host" class="setting-input" type="text" placeholder="http://localhost:11434" />
@@ -701,6 +713,18 @@
           </div>
 
           <div class="setting-group" id="set-group-gemini">
+            <div class="setting-guide">
+              <div class="setting-guide-title">
+                <span>✨ Gemini 연동 방법</span>
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="setting-guide-link" title="Google AI Studio API 키">❓ 가이드</a>
+              </div>
+              <ol class="setting-guide-steps">
+                <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 에서 무료 API 키 발급</li>
+                <li>발급한 키를 아래에 붙여넣기</li>
+                <li>모델: <code>gemini-2.5-flash</code>(빠름) 또는 <code>gemini-2.5-pro</code>(고품질)</li>
+                <li><b>연결 테스트</b> → <b>저장 및 적용</b></li>
+              </ol>
+            </div>
             <div class="setting-row">
               <label class="setting-label" for="set-gemini-key">Gemini API 키</label>
               <input id="set-gemini-key" class="setting-input" type="password" placeholder="(설정 시 변경, 빈칸이면 유지)" />
@@ -712,6 +736,16 @@
           </div>
 
           <div class="setting-group" id="set-group-local">
+            <div class="setting-guide">
+              <div class="setting-guide-title">
+                <span>💻 로컬 모델 (llama-cpp)</span>
+              </div>
+              <ol class="setting-guide-steps">
+                <li><code>models/</code> 폴더의 GGUF 파일을 자동 감지</li>
+                <li>또는 아래에 GGUF 파일 경로 직접 지정</li>
+                <li>모델이 없으면 다운로드 모달에서 받을 수 있음</li>
+              </ol>
+            </div>
             <div class="setting-row">
               <label class="setting-label" for="set-model-path">모델 경로 (선택)</label>
               <input id="set-model-path" class="setting-input" type="text" placeholder="(비우면 models/ 자동 감지)" />
