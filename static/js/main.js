@@ -36,6 +36,7 @@ const state = {
   currentViewPath: "index.html",
   treeCollapsed: {},
   devMode: true,
+  designSystem: null, // 서버 단일 진실원 (프로젝트 로드 시 복원)
 };
 
 // ── DOM Ref shortcuts ──
@@ -564,7 +565,7 @@ function injectInteractionScript(frame) {
     }
     const script = doc.createElement("script");
     script.id = "wgen-interaction";
-    script.textContent = `(function(){var el=null;var devMode=${state.devMode};function gi(e){var l=e.closest("a");var i={tag:e.tagName.toLowerCase(),id:e.id||"",classes:(e.className||"").toString().trim(),text:(e.innerText||"").substring(0,100).trim(),html:e.outerHTML.substring(0,500)};try{var cs=getComputedStyle(e);i.zIndex=cs.zIndex;i.position=cs.position}catch(ex){}if(e.getAttribute("src"))i.src=e.getAttribute("src");if(e.getAttribute("alt"))i.alt=e.getAttribute("alt");if(l){i.linkHref=l.getAttribute("data-nav")||l.getAttribute("href")||"";i.linkText=(l.innerText||"").substring(0,100).trim()}return i};document.addEventListener("mouseover",function(e){if(!devMode)return;if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;if(el===e.target)return;document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});e.target.classList.add("wgen-hover")});document.addEventListener("mouseout",function(e){if(!devMode)return;if(el!==e.target)e.target.classList.remove("wgen-hover")});document.addEventListener("click",function(e){if(e.button!==0)return;var l=e.target.closest("a");if(l){var h=l.getAttribute("data-nav")||l.getAttribute("href");if(!h||h===""||h.startsWith("javascript:")){e.preventDefault();return}e.preventDefault();e.stopPropagation();if(devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===l){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=l;l.classList.remove("wgen-hover");l.classList.add("wgen-selected")}window.parent.postMessage({type:"preview-link-clicked",href:h,text:(l.innerText||"").substring(0,100).trim(),tag:"a",classes:(l.className||"").toString().trim()},"*");return}if(!devMode)return;e.stopPropagation();if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===e.target){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=e.target;e.target.classList.remove("wgen-hover");e.target.classList.add("wgen-selected");var i=gi(e.target);i.type="element-selected";window.parent.postMessage(i,"*")});window.addEventListener("message",function(e){if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});el=null}if(e.data&&e.data.type==="navigate"){var h=e.data.href;if(h.startsWith("#")){var t=document.querySelector(h);if(t)t.scrollIntoView({behavior:"smooth"})}}if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;if(devMode){document.body.classList.add("wgen-devmode")}else{document.body.classList.remove("wgen-devmode");document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});el=null}}})})();`;
+    script.textContent = `(function(){var el=null;var devMode=${state.devMode};function gi(e){var l=e.closest("a");var i={tag:e.tagName.toLowerCase(),id:e.id||"",classes:(e.className||"").toString().trim(),text:(e.innerText||"").substring(0,100).trim(),html:e.outerHTML.substring(0,500)};try{var cs=getComputedStyle(e);i.zIndex=cs.zIndex;i.position=cs.position}catch(ex){}if(e.getAttribute("src"))i.src=e.getAttribute("src");if(e.getAttribute("alt"))i.alt=e.getAttribute("alt");if(l){i.linkHref=l.getAttribute("data-nav")||l.getAttribute("href")||"";i.linkText=(l.innerText||"").substring(0,100).trim()}return i};document.addEventListener("mouseover",function(e){if(!devMode)return;if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;if(el===e.target)return;document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});e.target.classList.add("wgen-hover")});document.addEventListener("mouseout",function(e){if(!devMode)return;if(el!==e.target)e.target.classList.remove("wgen-hover")});document.addEventListener("click",function(e){if(e.button!==0)return;var l=e.target.closest("a");if(l){var h=l.getAttribute("data-nav")||l.getAttribute("href");if(!h||h===""||h.startsWith("javascript:")){e.preventDefault();return}e.preventDefault();e.stopPropagation();if(devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===l){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=l;l.classList.remove("wgen-hover");l.classList.add("wgen-selected")}window.parent.postMessage({type:"preview-link-clicked",href:h,text:(l.innerText||"").substring(0,100).trim(),tag:"a",classes:(l.className||"").toString().trim()},"*");return}if(!devMode)return;e.stopPropagation();if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===e.target){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=e.target;e.target.classList.remove("wgen-hover");e.target.classList.add("wgen-selected");if(!e.target.getAttribute("data-wgen-id")){e.target.setAttribute("data-wgen-id","w"+Math.random().toString(36).slice(2,8))}var i=gi(e.target);i.wgen_id=e.target.getAttribute("data-wgen-id");i.type="element-selected";window.parent.postMessage(i,"*")});window.addEventListener("message",function(e){if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});el=null}if(e.data&&e.data.type==="navigate"){var h=e.data.href;if(h.startsWith("#")){var t=document.querySelector(h);if(t)t.scrollIntoView({behavior:"smooth"})}}if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;if(devMode){document.body.classList.add("wgen-devmode")}else{document.body.classList.remove("wgen-devmode");document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});el=null}}})})();`;
     doc.body.appendChild(script);
   } catch (e) { console.warn("iframe injection failed:", e); }
 }
@@ -579,14 +580,30 @@ var _dm=devMode;applyDevMode(_dm);if(!document.body)document.addEventListener("D
 window.addEventListener("message",function(e){if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;applyDevMode(devMode);if(!devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}}else if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}});
 document.addEventListener("mouseover",function(e){if(!devMode||e.target.tagName==="BODY"||e.target.tagName==="HTML"||el===e.target)return;document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});e.target.classList.add("wgen-hover")});
 document.addEventListener("mouseout",function(e){if(!devMode)return;if(el!==e.target)e.target.classList.remove("wgen-hover")});
-document.addEventListener("click",function(e){if(e.button!==0)return;var l=e.target.closest("a");if(l){var h=l.getAttribute("data-nav")||l.getAttribute("href");if(!h||h===""||h.startsWith("javascript:")){e.preventDefault();return}e.preventDefault();e.stopPropagation();if(devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===l){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=l;l.classList.remove("wgen-hover");l.classList.add("wgen-selected")}window.parent.postMessage({type:"preview-link-clicked",href:h,text:(l.innerText||"").substring(0,100).trim(),tag:"a",classes:(l.className||"").toString().trim()},"*");return}if(!devMode)return;e.stopPropagation();if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===e.target){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=e.target;e.target.classList.add("wgen-selected");window.parent.postMessage({type:"element-selected",tag:e.target.tagName.toLowerCase(),id:e.target.id||"",classes:(e.target.className||"").toString().trim(),text:(e.target.innerText||"").substring(0,100).trim(),html:e.target.outerHTML.substring(0,500)},"*")});})();<\/script>`;
+document.addEventListener("click",function(e){if(e.button!==0)return;var l=e.target.closest("a");if(l){var h=l.getAttribute("data-nav")||l.getAttribute("href");if(!h||h===""||h.startsWith("javascript:")){e.preventDefault();return}e.preventDefault();e.stopPropagation();if(devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===l){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=l;l.classList.remove("wgen-hover");l.classList.add("wgen-selected")}window.parent.postMessage({type:"preview-link-clicked",href:h,text:(l.innerText||"").substring(0,100).trim(),tag:"a",classes:(l.className||"").toString().trim()},"*");return}if(!devMode)return;e.stopPropagation();if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===e.target){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=e.target;e.target.classList.add("wgen-selected");if(!e.target.getAttribute("data-wgen-id")){e.target.setAttribute("data-wgen-id","w"+Math.random().toString(36).slice(2,8))}var _wid=e.target.getAttribute("data-wgen-id");window.parent.postMessage({type:"element-selected",wgen_id:_wid,tag:e.target.tagName.toLowerCase(),id:e.target.id||"",classes:(e.target.className||"").toString().trim(),text:(e.target.innerText||"").substring(0,100).trim(),html:e.target.outerHTML.substring(0,500)},"*")});})();<\/script>`;
+}
+
+function showPreviewError(msg) {
+  const frame = el.previewFrame;
+  if (!frame) return;
+  const safe = (msg || "미리보기 내용이 비어 있습니다.").replace(/</g, "&lt;");
+  const body = '<body style="font-family:system-ui;padding:24px;color:#c0392b;background:#1a1a1a">' +
+    '<h3>⚠️ 미리보기 오류</h3><p>' + safe + '</p></body>';
+  try { frame.srcdoc = body; } catch (e) {}
+  frame.style.display = "block";
+  frame.classList.remove("hidden");
+  if (el.previewPlaceholder) el.previewPlaceholder.classList.add("hidden");
 }
 
 function updatePreview(html, isStreaming) {
   const frame = el.previewFrame;
   if (!frame || !html) return;
   let processed = html.replace(/===HTML_START===|===HTML_END===/g, "").replace(/<script[\s\S]*?<\/script>/gi, "").trim();
-  if (!processed || processed.length < 10) return;
+  if (!processed || processed.length < 10) {
+    // 빈 결과를 조용히 무시하지 않는다 — 스트리밍 중이 아니면 에러 표시
+    if (!isStreaming) showPreviewError("생성된 HTML이 비어 있습니다. 다시 시도해 주세요.");
+    return;
+  }
   const headScripts = '<script id="wgen-error-catcher">window.onerror=function(m,u,l,c){window.parent.postMessage({type:"preview-error",message:m,line:l,col:c},"*");return false;};window.addEventListener("unhandledrejection",function(e){window.parent.postMessage({type:"preview-error",message:"Unhandled promise: "+(e.reason&&e.reason.message||e.reason),"line":0,"col":0},"*");});<\/script>' + buildInteractionScript();
   const hi = processed.toLowerCase().indexOf("<head");
   if (hi !== -1) {
@@ -1148,6 +1165,139 @@ function pushHtmlSnapshot() {
   }
 }
 
+// ── 모드 셀렉터 (자동 추천 + 수동 덮어쓰기) ──
+function getSelectedMode() {
+  const elSel = document.getElementById("mode-select");
+  const v = elSel ? elSel.value : "auto";
+  return v === "auto" ? undefined : v; // auto면 서버 자동 분류
+}
+
+// ── 통일 전송 (v2) ──
+// /api/chat/stream/v2 + createSSEReader(type 라우팅).
+// html→미리보기, chat→채팅창, status→모달. 콘텐츠 추측·덤프 없음.
+async function sendMessageV2(message, displayMessage, elementContextObj) {
+  if (!state.currentProjectId) {
+    await generateProjectId();
+    if (!state.projectTitle) state.projectTitle = message.slice(0, 30) + (message.length > 30 ? "..." : "");
+    await initProjectStructure(message);
+  }
+  const savedHtml = state.generatedHtml || "";
+  const isFirst = !savedHtml && !elementContextObj;
+  const dm = detectMultiPage(message);
+  const isMulti = isFirst && (dm !== null ? dm : state.multiPageMode);
+
+  // design_system: 저장본이 있으면 사용(scaffold_css/menu 재사용), 최신 토큰 반영
+  const designSystem = Object.assign(
+    { template: "", page_type: "", design_content: "", scaffold_css: "", brand: "WebGen AI", menu_items: [] },
+    state.designSystem || {}
+  );
+  designSystem.template = state.selectedTemplate || designSystem.template;
+  designSystem.page_type = state.selectedType || designSystem.page_type;
+  if (state.selectedDesignContent) designSystem.design_content = state.selectedDesignContent;
+  if (state.projectTitle) designSystem.brand = state.projectTitle;
+
+  const assistantDiv = addMessage("messages", "assistant", isFirst ? "⏳ 홈페이지 생성 중..." : "⏳ 처리 중...");
+  showGenerating(!isFirst);
+
+  let chatText = "";
+  let finalHtml = "";
+  let sawHtml = false;
+  const multiPages = {};
+
+  try {
+    const response = await fetch("/api/chat/stream/v2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        mode: getSelectedMode(),
+        design_system: designSystem,
+        history: state.chatHistory.slice(-5),
+        current_html: savedHtml,           // 전체 — 절단 없음
+        element_context: elementContextObj || null,
+        multi_page: !!isMulti,
+        page_type: state.selectedType,
+        template: state.selectedTemplate,
+      }),
+      signal: state.abortController ? state.abortController.signal : undefined,
+    });
+
+    const sse = createSSEReader(response);
+    sse.on("status", (d) => {
+      const p = d.payload;
+      if (typeof p === "string") { if (el.generatingStatusText) el.generatingStatusText.textContent = p.slice(0, 80); }
+      else if (p && p.menu_items) { state.multiPageMenuItems = p.menu_items; }
+    });
+    sse.on("chat", (d) => {
+      chatText += (d.payload || "");
+      assistantDiv.innerHTML = formatContent(stripThinkingBlock(chatText));
+      scrollToBottom("messages");
+    });
+    sse.on("html", (d) => {
+      sawHtml = true;
+      const p = d.payload;
+      if (typeof p === "string") { finalHtml = p; state.generatedHtml = p; updatePreview(p, true); }
+      else if (p && p.file) {
+        multiPages[p.file] = p.html;
+        if (p.file === "index.html") { finalHtml = p.html; state.generatedHtml = p.html; updatePreview(p.html, true); }
+      }
+    });
+    sse.on("done", (d) => {
+      const p = d && d.payload;
+      if (p && p.html) { finalHtml = p.html; state.generatedHtml = p.html; }
+    });
+    sse.on("error", (d) => {
+      assistantDiv.innerHTML = `<span style="color: var(--error);">⚠️ ${d.payload}</span>`;
+    });
+    await sse.start();
+
+    if (finalHtml) {
+      state.generatedHtml = finalHtml;
+      updatePreview(finalHtml, false);
+      if (Object.keys(multiPages).length) {
+        state.multiPageHtmls = Object.assign(state.multiPageHtmls || {}, multiPages);
+        state.multiPageMode = true;
+        if (state.multiPageMenuItems && state.multiPageMenuItems.length) designSystem.menu_items = state.multiPageMenuItems;
+      }
+      state.designSystem = designSystem; // 갱신된 디자인 상태 보존
+      if (state.currentProjectId) {
+        await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: "index.html", content: finalHtml }),
+        }).catch(() => {});
+        for (const [file, html] of Object.entries(multiPages)) {
+          if (file === "index.html") continue;
+          await fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: file, content: html }),
+          }).catch(() => {});
+        }
+        loadFileTree(state.currentProjectId);
+      }
+      state.chatHistory.push({ role: "assistant", content: "홈페이지를 생성했습니다. 미리보기를 확인하세요." });
+      if (!chatText) assistantDiv.innerHTML = "<div>✅ 완료! 오른쪽 미리보기를 확인하세요.</div>";
+      saveProject();
+      enableReviewBtn();
+    } else if (chatText) {
+      // ASK 등 — 채팅만, 미리보기 불변
+      state.chatHistory.push({ role: "assistant", content: stripThinkingBlock(chatText) });
+    } else if (!sawHtml) {
+      assistantDiv.innerHTML = "<span style=\"color: var(--error);\">⚠️ 응답을 받지 못했습니다. 다시 시도해 주세요.</span>";
+    }
+  } catch (e) {
+    if (e.name === "AbortError") { assistantDiv.innerHTML = "⚠️ 작업이 취소되었습니다."; }
+    else { assistantDiv.innerHTML = `<span style="color: var(--error);">⚠️ 오류: ${e.message}</span>`; }
+  } finally {
+    state.selectedElement = null;
+    state.pendingElementAction = false;
+    if (typeof hideSelectedElementBar === "function") hideSelectedElementBar();
+    hideGenerating();
+    state.isGenerating = false;
+    el.sendBtn.disabled = false;
+    el.typingIndicator.classList.add("hidden");
+  }
+}
+
 // ── Main sendMessage ──
 async function sendMessage() {
   const input = el.userInput;
@@ -1239,7 +1389,12 @@ async function sendMessage() {
   el.typingIndicator.classList.remove("hidden");
   scrollToBottom("messages");
 
-  try {
+  // 통일 경로(v2)로 라우팅. user history는 위에서 처리됨(첫 생성은 여기서 보강).
+  if (isFirstGeneration) state.chatHistory.push({ role: "user", content: displayMessage });
+  await sendMessageV2(message, displayMessage, state.selectedElement || null);
+  return;
+
+  try { // eslint-disable-line no-unreachable — 레거시 경로(Task 5.1에서 제거)
     if (isFirstGeneration) {
       const isMulti = detectMultiPage(message) !== null ? detectMultiPage(message) : state.multiPageMode;
       if (state.directMode && !isMulti) {
@@ -1823,6 +1978,7 @@ async function saveProject() {
         html: state.generatedHtml,
         history: state.chatHistory,
         design_content: state.selectedDesignContent,
+        design_system: state.designSystem,
       }),
     });
     loadProjects();
@@ -1871,6 +2027,7 @@ async function loadProject(id) {
     state.selectedType = project.page_type;
     state.selectedTemplate = project.template;
     state.selectedDesignContent = project.design_content || "";
+    state.designSystem = project.design_system || null; // 단일 진실원 복원 (세션 드롭 방지)
     state.chatHistory = project.history || [];
     const rawHtml = project.html || "";
     state.generatedHtml = rawHtml;
