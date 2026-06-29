@@ -102,6 +102,7 @@ def init_project():
         "html": "",
         "history": [],
         "design_content": "",
+        "design_system": None,
         "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "updated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "status": "generating"
@@ -145,6 +146,7 @@ def save_project():
     html = data.get("html", "")
     history = data.get("history", [])
     design_content = data.get("design_content", "")
+    design_system = data.get("design_system", None)
 
     projects_dir = get_projects_dir()
     os.makedirs(projects_dir, exist_ok=True)
@@ -200,6 +202,7 @@ def save_project():
         "template": template,
         "history": history,
         "design_content": design_content,
+        "design_system": design_system if design_system is not None else existing_meta.get("design_system"),
         "created_at": existing_meta.get("created_at", time.strftime("%Y-%m-%d %H:%M")),
         "updated_at": time.strftime("%Y-%m-%d %H:%M"),
         "html_path": html_path,
