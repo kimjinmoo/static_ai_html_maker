@@ -16,6 +16,9 @@ LLM_BACKEND = os.environ.get("LLM_BACKEND", "local").lower().strip()
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:7b")
+
 LLAMA_KWARGS = {
     "n_ctx": N_CTX,
     "n_gpu_layers": N_GPU_LAYERS,
