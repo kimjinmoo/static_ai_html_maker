@@ -42,3 +42,23 @@ def test_missing_element_complex(monkeypatch):
     c = _client(monkeypatch, '{"op":"text","text":"x"}')
     body = c.post("/api/edit/patch", json={"message": "바꿔"}).get_json()
     assert body["op"] == "complex"
+
+
+def test_html_patch_for_design_request(monkeypatch):
+    c = _client(monkeypatch, '{"op":"html","html":"<button class=\\"btn btn-primary btn-pill\\">눌러요</button>"}')
+    body = c.post("/api/edit/patch", json={"message": "이 버튼 더 둥글게 디자인 바꿔", "element": {"tag": "button", "html": "<button>눌러요</button>"}}).get_json()
+    assert body["op"] == "html"
+    assert "btn-pill" in body["html"]
+
+
+def test_design_section_used_when_design_system_present(monkeypatch):
+    captured = {}
+    def fake(messages):
+        captured["user"] = messages[-1]["content"]
+        return '{"op":"style","styles":{"border-radius":"12px"}}'
+    monkeypatch.setattr(er, "llama_chat", fake)
+    c = __import__("app", fromlist=["create_app"]).create_app().test_client()
+    c.post("/api/edit/patch", json={"message": "둥글게", "element": {"tag": "div"},
+                                    "design_system": {"template": "minimal_clean", "page_type": "company",
+                                                      "scaffold_css": ".x{}", "design_content": "primary=#123", "brand": "B", "menu_items": []}})
+    assert "primary=#123" in captured["user"] or ".container" in captured["user"]

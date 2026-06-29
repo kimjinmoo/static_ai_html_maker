@@ -10,38 +10,41 @@ import json
 from flask import Blueprint, request, jsonify
 
 from app.model import llama_chat
-from app.utils import strip_thinking
+from app.utils import strip_thinking, SCAFFOLD_CLASS_REFERENCE
 
 edit_bp = Blueprint("edit", __name__)
 
 PATCH_SYSTEM = ("You convert an edit request on ONE selected HTML element into a minimal "
-                "JSON patch. Output ONLY JSON, no prose, no markdown.")
+                "JSON patch that changes ONLY that element. Output ONLY JSON, no prose, no markdown.")
 
-VALID_OPS = ("text", "delete", "style", "href", "src")
+VALID_OPS = ("text", "delete", "style", "href", "src", "html")
 
 
-def _build_prompt(message, el):
-    return f"""선택된 HTML 요소 하나에 대한 사용자 수정 요청을 최소 JSON 패치로 변환하세요.
+def _build_prompt(message, el, design_section=""):
+    design_block = f"\n## 디자인 일관성 참고 (op=html 시 동일 디자인 유지)\n{design_section}\n" if design_section else ""
+    return f"""선택된 HTML 요소 **하나만** 변경하는 최소 JSON 패치를 만드세요. 다른 요소·전체 레이아웃은 절대 건드리지 마세요.
 
-## 요소 정보
+## 선택된 요소
 - 태그: {el.get('tag', '')}
 - 현재 텍스트: {(el.get('text') or '')[:200]}
-- HTML: {(el.get('html') or '')[:300]}
-
+- 현재 HTML: {(el.get('html') or '')[:800]}
+{design_block}
 ## 사용자 요청
 "{message}"
 
 ## 출력 (오직 JSON, 다른 텍스트 금지)
-{{"op": "text|delete|style|href|src|complex", "text": "<op=text일 때 새 텍스트>", "href": "<op=href일 때 URL/경로>", "src": "<op=src일 때 이미지 URL/경로>", "styles": {{"<css-속성>": "<값>"}}}}
+{{"op": "text|delete|style|href|src|html|complex", "text": "<새 텍스트>", "href": "<URL>", "src": "<이미지 URL>", "styles": {{"<css>": "<값>"}}, "html": "<이 요소의 새 outerHTML 전체>"}}
 
-## 규칙
-- op="text": 요소의 보이는 텍스트만 변경. 새 텍스트를 "text"에 넣으세요.
+## op 선택 규칙 (우선순위)
+- op="text": 보이는 텍스트만 변경.
 - op="delete": 요소 삭제.
-- op="style": 색/배경/크기/폰트 등 인라인 스타일 변경. "styles"에 CSS 넣으세요. 예: {{"color":"#ff0000"}}.
-- op="href": 링크 대상 변경. URL/경로를 "href"에 넣으세요.
-- op="src": 이미지 소스 변경. URL/경로를 "src"에 넣으세요.
-- op="complex": 자식 추가/삭제, 레이아웃 변경 등 단순 패치로 불가능한 경우.
-- 필요한 키만 포함. 최소 JSON. 마크다운 코드블록 금지."""
+- op="href": 링크 대상 변경. / op="src": 이미지 소스 변경.
+- op="style": 색/배경/크기/여백/그림자/둥글기/정렬 등 **인라인 CSS로 표현 가능한** 디자인 변경. "styles"에 필요한 CSS 속성 모두 넣으세요. 예: {{"border-radius":"12px","box-shadow":"0 4px 16px rgba(0,0,0,.15)","padding":"16px 24px"}}.
+- op="html": 요소 **내부 구조/디자인을 다시 짜야** 하는 경우(자식 재배치, 새 마크업 등). 그 요소의 **새 outerHTML 전체**를 "html"에 넣으세요. 같은 태그로 시작하고, 위 디자인 참고의 scaffold 클래스를 사용하며, 색/폰트는 하드코딩하지 말고 기존 디자인을 따르세요. 이 요소 범위만 작성(페이지 전체 금지).
+- op="complex": **다른 요소까지** 함께 바꿔야 하거나 형제/부모 구조 변경이 필요한 경우에만.
+
+**디자인 요청은 거의 항상 op="style" 또는 op="html"로 처리 가능합니다. op="complex"는 정말 다른 요소가 얽힐 때만 쓰세요.**
+필요한 키만 포함. 최소 JSON. 마크다운 코드블록 금지."""
 
 
 def _parse_patch(raw):
@@ -61,6 +64,17 @@ def _parse_patch(raw):
     return obj
 
 
+def _design_section(data):
+    ds = data.get("design_system")
+    if not ds:
+        return SCAFFOLD_CLASS_REFERENCE
+    try:
+        from app.design_system import DesignSystem
+        return DesignSystem.from_dict(ds).design_prompt_section()
+    except Exception:
+        return SCAFFOLD_CLASS_REFERENCE
+
+
 @edit_bp.route("/api/edit/patch", methods=["POST"])
 def edit_patch():
     data = request.json or {}
@@ -71,7 +85,7 @@ def edit_patch():
     try:
         raw = llama_chat([
             {"role": "system", "content": PATCH_SYSTEM},
-            {"role": "user", "content": _build_prompt(message, el)},
+            {"role": "user", "content": _build_prompt(message, el, _design_section(data))},
         ])
         return jsonify(_parse_patch(raw))
     except Exception as e:
