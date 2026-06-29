@@ -7,7 +7,7 @@ from app.model import llama_chat, llama_chat_stream_with_reasoning
 from app.chat import build_messages
 from app.modular import generate_single_page, generate_multi_page
 from app.thinking import filter_thinking_stream
-from app.strategies import decide_strategy, classify_edit
+from app.strategies import decide_strategy
 from app.utils import sanitize_surrogates
 from app.model import llama_chat_stream
 from app.utils import strip_thinking, ensure_complete_html, load_scaffold_css, build_fallback_html, build_scaffold_frame, SCAFFOLD_CLASS_REFERENCE, _remove_truncated_lines
@@ -373,10 +373,8 @@ def api_classify_edit():
     data = request.json
     message = data.get("message", "").strip()
     element_context = data.get("element_context", "")
-    if not message or not element_context:
-        return jsonify({"edit_type": "full", "new_text": "", "attrs": {}})
-    edit_type, new_text, attrs = classify_edit(message, element_context)
-    return jsonify({"edit_type": edit_type, "new_text": new_text, "attrs": attrs})
+    # 레거시 라우트: classify_edit 미구현(제거됨). 항상 full 편집으로 폴백.
+    return jsonify({"edit_type": "full", "new_text": "", "attrs": {}})
 
 
 @main_bp.route("/api/review_code", methods=["POST"])
