@@ -44,8 +44,9 @@ def _setup_windows_cuda_path():
 
 
 class LocalLlamaBackend(ModelBackend):
-    def __init__(self):
+    def __init__(self, model_path=None):
         self._llm = None
+        self._model_path = model_path or None
 
     def _get_llm(self):
         global _llama
@@ -58,7 +59,7 @@ class LocalLlamaBackend(ModelBackend):
             return _llama
 
     def _load_model(self):
-        model_path = find_model_file()
+        model_path = self._model_path or find_model_file()
         if not model_path:
             raise FileNotFoundError(
                 "GGUF \xeb\xaa\xa8\xeb\x8d\xb8 \xed\x8c\x8c\xec\x9d\xbc\xec\x9d\x84 \xec\xb0\xbe\xec\x9d\x84 \xec\x88\x98 \xec\x97\x86\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4.\n"

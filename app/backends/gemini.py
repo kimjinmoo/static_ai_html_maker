@@ -1,30 +1,20 @@
 import os
-import threading
 
 from app.backends.base import ModelBackend
 from app.config import GEMINI_API_KEY, GEMINI_MODEL, CHAT_SAMPLING
 
 
-_client = None
-_client_lock = threading.Lock()
-
-
-def _get_client():
-    global _client
-    if _client is not None:
-        return _client
-    with _client_lock:
-        if _client is not None:
-            return _client
-        from google import genai
-        from google.genai import types
-        _client = genai.Client(api_key=GEMINI_API_KEY)
-        return _client
-
-
 class GeminiBackend(ModelBackend):
-    def __init__(self):
-        self._model_name = GEMINI_MODEL
+    def __init__(self, api_key=None, model=None):
+        self._api_key = api_key or GEMINI_API_KEY
+        self._model_name = model or GEMINI_MODEL
+        self._client = None
+
+    def _get_client(self):
+        if self._client is None:
+            from google import genai
+            self._client = genai.Client(api_key=self._api_key)
+        return self._client
 
     def _build_contents(self, messages):
         system_instruction = ""
@@ -44,7 +34,7 @@ class GeminiBackend(ModelBackend):
 
     def chat(self, messages):
         import google.genai as genai
-        client = _get_client()
+        client = self._get_client()
         system_instruction, contents = self._build_contents(messages)
 
         response = client.models.generate_content(
@@ -62,7 +52,7 @@ class GeminiBackend(ModelBackend):
 
     def chat_stream(self, messages):
         import google.genai as genai
-        client = _get_client()
+        client = self._get_client()
         system_instruction, contents = self._build_contents(messages)
 
         for chunk in client.models.generate_content_stream(
@@ -82,7 +72,7 @@ class GeminiBackend(ModelBackend):
     def chat_stream_with_reasoning(self, messages):
         from google import genai
         from google.genai import types
-        client = _get_client()
+        client = self._get_client()
         system_instruction, contents = self._build_contents(messages)
 
         for chunk in client.models.generate_content_stream(

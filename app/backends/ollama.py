@@ -12,9 +12,9 @@ from app.config import OLLAMA_HOST, OLLAMA_MODEL, CHAT_SAMPLING
 
 
 class OllamaBackend(ModelBackend):
-    def __init__(self):
-        self._host = OLLAMA_HOST.rstrip("/")
-        self._model = OLLAMA_MODEL
+    def __init__(self, host=None, model=None):
+        self._host = (host or OLLAMA_HOST).rstrip("/")
+        self._model = model or OLLAMA_MODEL
 
     def _request(self, messages, think=False):
         body = {
