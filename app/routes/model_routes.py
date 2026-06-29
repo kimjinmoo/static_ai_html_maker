@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, Response
 from app.config import N_CTX, N_GPU_LAYERS, N_BATCH, DEFAULT_MODEL, DEFAULT_MODEL_REPO
 from app.utils import find_model_file
 from app.download import download_model_stream, download_status, download_lock
+from app.settings import get_effective_config
 
 
 model_bp = Blueprint("model", __name__)
@@ -13,6 +14,32 @@ model_bp = Blueprint("model", __name__)
 @model_bp.route("/api/models", methods=["GET"])
 def list_models():
     try:
+        cfg = get_effective_config()
+        backend = cfg.get("llm_backend", "local")
+
+        # 외부 백엔드는 GGUF 다운로드 불필요 — 설정만 되어 있으면 ready
+        if backend == "ollama":
+            return jsonify({
+                "models": [cfg.get("ollama_model", "")],
+                "status": "ready",
+                "backend": "ollama",
+                "host": cfg.get("ollama_host", ""),
+            })
+        if backend == "gemini":
+            if cfg.get("gemini_api_key"):
+                return jsonify({
+                    "models": [cfg.get("gemini_model", "")],
+                    "status": "ready",
+                    "backend": "gemini",
+                })
+            return jsonify({
+                "models": [],
+                "status": "no_model",
+                "backend": "gemini",
+                "hint": "Gemini API 키를 설정하세요 (⚙️ 설정)",
+            })
+
+        # local (llama-cpp)
         model_path = find_model_file()
         if model_path:
             model_name = os.path.basename(model_path)

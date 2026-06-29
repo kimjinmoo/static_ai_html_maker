@@ -1872,6 +1872,12 @@ function closeSettingsModal() {
   if (modal) modal.classList.add("hidden");
 }
 
+// 다운로드 모달에서 "외부 백엔드 연동" → 설정 모달로 전환
+function openSettingsFromDownload() {
+  if (typeof hideDownloadModal === "function") hideDownloadModal();
+  openSettingsModal();
+}
+
 function _collectSettings() {
   return {
     llm_backend: document.getElementById("set-backend").value,
@@ -1912,6 +1918,8 @@ async function saveSettings() {
     const d = await r.json();
     if (d.status === "ok") {
       _showSettingsResult(true, "저장 완료 — 백엔드가 즉시 적용되었습니다.");
+      // 외부 백엔드 적용 시 모델 준비 상태 갱신 → 다운로드 모달 해제
+      if (typeof checkConnection === "function") checkConnection();
       setTimeout(closeSettingsModal, 900);
     } else {
       _showSettingsResult(false, "저장 실패");
