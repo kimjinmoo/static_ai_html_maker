@@ -16,6 +16,13 @@ def get_backend():
         if _backend is not None:
             return _backend
 
+        if LLM_BACKEND == "ollama":
+            from app.backends.ollama import OllamaBackend
+            _backend = OllamaBackend()
+            from app.config import OLLAMA_HOST, OLLAMA_MODEL
+            print(f"  [Backend] Ollama ({OLLAMA_MODEL} @ {OLLAMA_HOST})")
+            return _backend
+
         if LLM_BACKEND == "gemini":
             try:
                 from app.backends.gemini import GeminiBackend
