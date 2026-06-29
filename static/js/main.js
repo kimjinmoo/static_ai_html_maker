@@ -1040,7 +1040,7 @@ async function sendMessageModular(message, assistantDiv, history, currentHtml, i
         await fetch(`/api/projects/${state.currentProjectId}/save_multipage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pages: allPagesHtml, title: state.projectTitle, page_type: state.selectedType, template: state.selectedTemplate, history: state.chatHistory, design_content: state.selectedDesignContent, menu_items: mpMenuItems }),
+          body: JSON.stringify({ pages: allPagesHtml, title: state.projectTitle, page_type: state.selectedType, template: state.selectedTemplate, history: state.chatHistory, design_content: state.selectedDesignContent, menu_items: mpMenuItems, design_system: state.designSystem }),
         });
         // post-generation AI review 제거됨: 백엔드에서 결정적 조립 + ensure_complete_html로 보정
       } catch (e) { console.warn("Multi-page save failed:", e); }

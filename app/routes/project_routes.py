@@ -410,6 +410,7 @@ def save_multipage_project(project_id):
     history = data.get("history", [])
     design_content = data.get("design_content", "")
     menu_items = data.get("menu_items", [])
+    design_system = data.get("design_system", None)
 
     if not pages:
         return jsonify({"error": "\ud398\uc774\uc9c0 \ub370\uc774\ud130\uac00 \ud544\uc694\ud569\ub2c8\ub2e4."}), 400
@@ -459,6 +460,7 @@ def save_multipage_project(project_id):
         "template": template,
         "history": history,
         "design_content": design_content,
+        "design_system": design_system,
         "created_at": time.strftime("%Y-%m-%d %H:%M"),
         "updated_at": time.strftime("%Y-%m-%d %H:%M"),
         "status": "completed",
