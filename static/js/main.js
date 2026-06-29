@@ -901,6 +901,32 @@ async function sendMessageV2(message, displayMessage, elementContextObj) {
     });
 
     let _prog = 0;
+    // 진행 모달 todo 리스트
+    const todo = [];
+    function _renderTodo() {
+      if (!el.generatingProgressList) return;
+      el.generatingProgressList.innerHTML = todo.map(function (t) {
+        const icon = t.status === "done" ? "✓" : (t.status === "active" ? "⟳" : "·");
+        return `<div class="generating-progress-item ${t.status}"><span class="generating-progress-icon">${icon}</span><span>${t.label}</span></div>`;
+      }).join("");
+      const a = el.generatingProgressList.querySelector(".active");
+      if (a) a.scrollIntoView({ block: "nearest" });
+    }
+    function _advance(key) {
+      let hit = false;
+      for (const t of todo) {
+        if (t.key === key) { t.status = "done"; hit = true; }
+        else if (hit && t.status === "pending") { t.status = "active"; break; }
+      }
+      _renderTodo();
+    }
+    if (!isMulti) {
+      // 단일 페이지: 2단계 체크리스트
+      todo.push({ key: "gen", label: "AI 콘텐츠 생성", status: "active" });
+      todo.push({ key: "build", label: "페이지 조립 · 검증", status: "pending" });
+      _renderTodo();
+    }
+
     const sse = createSSEReader(response);
     sse.on("status", (d) => {
       const p = d.payload;
@@ -911,11 +937,20 @@ async function sendMessageV2(message, displayMessage, elementContextObj) {
         if (p.indexOf("<") === -1 && p.length < 60 && el.generatingStatusText) {
           el.generatingStatusText.textContent = p;
         }
-      } else if (p && p.menu_items) {
-        state.multiPageMenuItems = p.menu_items;
+      } else if (p && (p.pages || p.menu_items)) {
+        // 멀티페이지 계획 수신 → 페이지별 todo 구성
+        state.multiPageMenuItems = p.menu_items || state.multiPageMenuItems;
+        const files = p.pages || [];
+        const titles = p.menu_items || [];
+        todo.length = 0;
+        files.forEach((f, i) => todo.push({
+          key: f, label: titles[i] || f.replace("pages/", "").replace(".html", ""),
+          status: i === 0 ? "active" : "pending",
+        }));
+        _renderTodo();
         _prog = Math.min(92, _prog + 4);
         updateProgressBar(_prog);
-        if (el.generatingStatusText) el.generatingStatusText.textContent = `${p.menu_items.length}개 페이지 구성 중...`;
+        if (el.generatingStatusText) el.generatingStatusText.textContent = `${files.length || titles.length}개 페이지 생성 중...`;
       }
     });
     sse.on("chat", (d) => {
@@ -926,15 +961,22 @@ async function sendMessageV2(message, displayMessage, elementContextObj) {
     sse.on("html", (d) => {
       sawHtml = true;
       const p = d.payload;
-      if (typeof p === "string") { finalHtml = p; state.generatedHtml = p; updatePreview(p, true); }
-      else if (p && p.file) {
+      if (typeof p === "string") {
+        finalHtml = p; state.generatedHtml = p; updatePreview(p, true);
+        _advance("gen");  // 단일: 콘텐츠 생성 완료 → 조립 단계
+      } else if (p && p.file) {
         multiPages[p.file] = p.html;
         if (p.file === "index.html") { finalHtml = p.html; state.generatedHtml = p.html; updatePreview(p.html, true); }
+        _advance(p.file);  // 해당 페이지 완료 → 다음 페이지 활성
+        _prog = Math.min(92, _prog + 6);
+        updateProgressBar(_prog);
       }
     });
     sse.on("done", (d) => {
       const p = d && d.payload;
       if (p && p.html) { finalHtml = p.html; state.generatedHtml = p.html; }
+      todo.forEach((t) => { t.status = "done"; });
+      _renderTodo();
     });
     sse.on("error", (d) => {
       assistantDiv.innerHTML = `<span style="color: var(--error);">⚠️ ${d.payload}</span>`;
