@@ -2590,3 +2590,12 @@ body {
   padding: 28px 24px;
   max-height: 78vh;
 }
+
+/* 생성 모달 — 진행률 + 속도 메타 */
+.generating-meta {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 6px;
+}
+.generating-speed {
+  font-size: 0.8rem; color: var(--accent, #6366f1); font-variant-numeric: tabular-nums;
+}

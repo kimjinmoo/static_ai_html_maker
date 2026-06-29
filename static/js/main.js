@@ -63,6 +63,7 @@ const el = {
   generatingStatusText: $("generating-status-text"),
   generatingProgressBar: $("generating-progress-bar"),
   generatingProgressPercent: $("generating-progress-percent"),
+  generatingSpeed: $("generating-speed"),
   projectTitle: $("project-title"),
   designSummary: $("design-summary"),
   fileTreeSection: $("file-tree-section"),
@@ -640,10 +641,20 @@ function updatePreview(html, isStreaming) {
   if (el.previewPlaceholder) el.previewPlaceholder.classList.add("hidden");
 }
 
+// \ucd08\ub2f9 \ucc98\ub9ac \ud1a0\ud070 \ucd94\uc815 (\ud1a0\ud070 \u2248 \ub204\uc801 \ubb38\uc790\uc218 / 4)
+function updateGenSpeed(startTs, chars) {
+  if (!el.generatingSpeed) return;
+  const sec = (Date.now() - startTs) / 1000;
+  if (sec < 0.3) return;
+  const tps = (chars / 4) / sec;
+  el.generatingSpeed.textContent = `\u26a1 ${tps.toFixed(1)} tok/s`;
+}
+
 function showGenerating(isEditing) {
   state.abortController = new AbortController();
   // \uc9c4\ud589\uc0c1\ud669/todo\ub294 \ubaa8\ub2ec\ub85c \u2014 \ubbf8\ub9ac\ubcf4\uae30 \uc601\uc5ed\uc740 HTML(iframe)\ub9cc \uc720\uc9c0
   if (el.generatingModal) el.generatingModal.classList.remove("hidden");
+  if (el.generatingSpeed) el.generatingSpeed.textContent = "";
   if (el.previewGenerating) {
     const title = el.previewGenerating.querySelector("h3");
     if (title) title.textContent = isEditing ? "\uc218\uc815 \uc911" : "\ud648\ud398\uc774\uc9c0 \uc0dd\uc131 \uc911";
@@ -820,6 +831,8 @@ async function collectGeneratedHtmlV2(body) {
   let err = null;
   const multiPages = {};
   let _prog = 0;
+  const _startTs = Date.now();
+  let _chars = 0;
   const sse = createSSEReader(response);
   sse.on("status", (d) => {
     const p = d.payload;
@@ -828,6 +841,8 @@ async function collectGeneratedHtmlV2(body) {
     } else if (typeof p === "string") {
       _prog = Math.min(92, _prog + 1.2);
       updateProgressBar(_prog);
+      _chars += p.length;
+      updateGenSpeed(_startTs, _chars);
       if (p.indexOf("<") === -1 && p.length < 60 && el.generatingStatusText) el.generatingStatusText.textContent = p;
     }
   });
@@ -901,6 +916,8 @@ async function sendMessageV2(message, displayMessage, elementContextObj) {
     });
 
     let _prog = 0;
+    const _startTs = Date.now();
+    let _chars = 0;
     // 진행 모달 todo 리스트
     const todo = [];
     function _renderTodo() {
@@ -933,6 +950,8 @@ async function sendMessageV2(message, displayMessage, elementContextObj) {
       if (typeof p === "string") {
         _prog = Math.min(92, _prog + 1.2);
         updateProgressBar(_prog);
+        _chars += p.length;
+        updateGenSpeed(_startTs, _chars);
         // HTML 토큰 노이즈는 숨기고 짧은 상태 메시지만 표시
         if (p.indexOf("<") === -1 && p.length < 60 && el.generatingStatusText) {
           el.generatingStatusText.textContent = p;
@@ -955,6 +974,8 @@ async function sendMessageV2(message, displayMessage, elementContextObj) {
     });
     sse.on("chat", (d) => {
       chatText += (d.payload || "");
+      _chars += (d.payload || "").length;
+      updateGenSpeed(_startTs, _chars);
       assistantDiv.innerHTML = formatContent(stripThinkingBlock(chatText));
       scrollToBottom("messages");
     });
