@@ -6,7 +6,7 @@ JSON의 design_system 키에 저장하고, 로드 시 복원한다."""
 
 from dataclasses import dataclass, field
 
-from app.utils import load_scaffold_css, SCAFFOLD_CLASS_REFERENCE
+from app.utils import load_scaffold_css, SCAFFOLD_CLASS_REFERENCE, build_scaffold_frame
 
 # custom(URL) 디자인이 골격 CSS를 못 주는 경우 사용할 기본 골격
 BASE_SCAFFOLD_TEMPLATE = "minimal_clean"
@@ -55,6 +55,18 @@ class DesignSystem:
         if self.template in ("minimal_clean", "bold_modern", "elegant_warm"):
             return self.template
         return BASE_SCAFFOLD_TEMPLATE
+
+    def build_frame(self, title="Page", current_file="index.html"):
+        """{CONTENT} 플레이스홀더를 가진 완전한 HTML 프레임을 결정적으로 생성.
+        head/nav/footer/CSS는 전부 이 디자인시스템으로 통일된다."""
+        return build_scaffold_frame(
+            self.scaffold_css,
+            template_name=self.scaffold_template_name(),
+            title=title,
+            menu_items=self.menu_items or None,
+            current_file=current_file,
+            brand=self.brand,
+        )
 
     def design_prompt_section(self):
         """모든 생성 프롬프트에 동일하게 주입되는 디자인 지침 블록."""

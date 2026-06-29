@@ -32,3 +32,14 @@ def test_design_section_includes_tokens_and_class_reference():
     section = ds.design_prompt_section()
     assert "primary=#123456" in section
     assert ".container" in section  # SCAFFOLD_CLASS_REFERENCE 포함
+
+
+def test_build_frame_contains_content_placeholder_and_scaffold():
+    ds = DesignSystem.create(template="minimal_clean", page_type="company",
+                             design_content="", brand="ACME",
+                             menu_items=["홈", "소개"])
+    frame = ds.build_frame(title="홈", current_file="index.html")
+    assert "{CONTENT}" in frame
+    assert "<!DOCTYPE html>" in frame
+    assert "ACME" in frame          # brand가 nav에 들어감
+    assert ds.scaffold_css[:40] in frame  # scaffold CSS가 <style>에 포함
