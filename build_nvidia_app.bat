@@ -40,7 +40,7 @@ pip install llama-cpp-python --upgrade --force-reinstall --no-cache-dir
 
 REM Install remaining dependencies
 echo [5/5] Installing other dependencies...
-pip install flask==3.0.0 gunicorn==21.2.0 pyinstaller>=6.15.0 markdown==3.5.1 huggingface-hub>=0.20.0
+pip install flask==3.0.0 gunicorn==21.2.0 "pyinstaller>=6.15.0" markdown==3.5.1 "huggingface-hub>=0.20.0"
 
 REM Build
 echo.

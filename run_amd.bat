@@ -31,7 +31,7 @@ call .venv-amd\Scripts\activate.bat
 
 REM Install core dependencies first (flask, etc.)
 echo [3/4] Installing core dependencies...
-pip install -q flask==3.0.0 markdown==3.5.1 huggingface-hub>=0.20.0 pywebview>=5.0
+pip install -q flask==3.0.0 markdown==3.5.1 "huggingface-hub>=0.20.0" "pywebview>=5.0"
 
 REM Install llama-cpp-python with Vulkan support
 REM Use a short TMP path to avoid Windows MAX_PATH (260 char) limit during source build
@@ -47,7 +47,7 @@ if %errorlevel% neq 0 (
     echo Possible fixes:
     echo   1. Install Vulkan SDK: https://vulkan.lunarg.com/sdk/home
     echo   2. Use CPU-only: pip install llama-cpp-python
-    echo   3. Use Gemini backend: set LLM_BACKEND=gemini ^& set GEMINI_API_KEY=your-key
+    echo   3. Use Ollama / Gemini backend via web UI (gear icon, no llama-cpp needed)
     echo.
     echo Starting with core deps only...
 )

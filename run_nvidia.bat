@@ -22,7 +22,7 @@ call .venv-nvidia\Scripts\activate.bat
 
 REM Install core dependencies first (flask, etc.)
 echo [3/4] Installing core dependencies...
-pip install -q flask==3.0.0 markdown==3.5.1 huggingface-hub>=0.20.0 pywebview>=5.0
+pip install -q flask==3.0.0 markdown==3.5.1 "huggingface-hub>=0.20.0" "pywebview>=5.0"
 
 REM Install CUDA 12.x runtime DLLs via pip (compatible with CUDA 13.0 systems)
 echo Installing CUDA 12.x runtime libraries...
@@ -31,17 +31,16 @@ pip install -q nvidia-cuda-runtime-cu12==12.4.127 nvidia-cublas-cu12 nvidia-cuda
 REM Install llama-cpp-python with CUDA 12.4 pre-built wheel
 echo Installing llama-cpp-python (CUDA 12.4)...
 pip install -q llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
-if %errorlevel% neq 0 (
-    echo [WARN] llama-cpp-python CUDA install failed. Falling back to CPU-only build...
-    if not exist "C:\tmp" mkdir C:\tmp 2>nul
-    set TMP=C:\tmp
-    set TEMP=C:\tmp
-    pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
-    if %errorlevel% neq 0 (
-        echo [WARN] CPU build also failed. Install VS Build Tools + C++ workload first.
-        echo Use Gemini backend as alternative: set LLM_BACKEND=gemini ^& set GEMINI_API_KEY=your-key
-    )
-)
+if not errorlevel 1 goto llama_done
+echo [WARN] llama-cpp-python CUDA install failed. Falling back to CPU-only build...
+if not exist "C:\tmp" mkdir C:\tmp 2>nul
+set "TMP=C:\tmp"
+set "TEMP=C:\tmp"
+pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
+if not errorlevel 1 goto llama_done
+echo [WARN] CPU build also failed. Install VS Build Tools + C++ workload,
+echo        or use Ollama / Gemini backend via web UI (gear icon, no llama-cpp needed).
+:llama_done
 
 REM Check model
 echo.

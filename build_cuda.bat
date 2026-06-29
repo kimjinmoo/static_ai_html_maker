@@ -35,7 +35,7 @@ python -m pip install --upgrade pip
 
 REM Install non-llama dependencies first
 echo [4/5] Installing core dependencies...
-pip install flask==3.0.0 gunicorn==21.2.0 pyinstaller>=6.15.0 markdown==3.5.1 pywebview>=5.0 huggingface-hub>=0.20.0
+pip install flask==3.0.0 gunicorn==21.2.0 "pyinstaller>=6.15.0" markdown==3.5.1 "pywebview>=5.0" "huggingface-hub>=0.20.0"
 
 REM Install CUDA 12.x runtime DLLs via pip
 echo Installing CUDA 12.x runtime libraries...
