@@ -83,7 +83,7 @@ make_web/
 ## 환경 변수
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
-| `LLM_BACKEND` | `local` | AI 백엔드 (`local`: llama-cpp-python, `gemini`: Google Gemini API) |
+| `LLM_BACKEND` | `local` | AI 백엔드 (`local`: llama-cpp-python, `gemini`: Google Gemini API, `ollama`: 외부 Ollama HTTP API) |
 | `MODEL_PATH` | (자동) | GGUF 모델 파일 경로 (설정 안 할 시 models/ 자동 감지) |
 | `N_CTX` | `32768` | 컨텍스트 길이 |
 | `N_GPU_LAYERS` | `-1` | GPU 오프로딩 레이어 수 (-1: 전체) |
@@ -93,6 +93,8 @@ make_web/
 | `PORT` | `5080` | Flask 포트 |
 | `GEMINI_API_KEY` | (없음) | Gemini 백엔드 사용 시 API 키 (`LLM_BACKEND=gemini` 필요) |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini 모델명 |
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama 서버 주소 (`LLM_BACKEND=ollama`) |
+| `OLLAMA_MODEL` | `qwen2.5-coder:7b` | Ollama 모델명 |
 
 ## 모델 설정
 - 기본 모델: `ornith-1.0-9b-Q4_K_M.gguf` (~5.7GB)
@@ -145,6 +147,9 @@ MODEL_PATH=./models/ornith-1.0-9b-Q4_K_M.gguf python app.py
 
 # Gemini 백엔드 사용
 LLM_BACKEND=gemini GEMINI_API_KEY=your-key-here python app.py
+
+# Ollama 외부 백엔드 사용 (별도 Ollama 서버 필요)
+LLM_BACKEND=ollama OLLAMA_MODEL=qwen2.5-coder:7b python app.py
 
 # GPU 가속 (환경 변수)
 N_GPU_LAYERS=-1 python app.py  # 전체 레이어 GPU 오프로딩
