@@ -1239,22 +1239,27 @@ async function sendMessage() {
   // 통일 경로(v2)로 라우팅. user history는 위에서 처리됨(첫 생성은 여기서 보강).
   if (isFirstGeneration) state.chatHistory.push({ role: "user", content: displayMessage });
 
-  // Fast-edit: dev모드 선택 요소의 단순 수정은 전체 재생성 없이 즉시 패치
-  if (state.selectedElement && state.selectedElement.wgen_id) {
+  // 규칙: 요소가 선택돼 있으면 "그 요소만" 수정한다. 페이지 전체 변경은
+  // 요청에 '전체/전부/모두/사이트' 등 전역 의도가 명시됐을 때만.
+  const _wantsWhole = /전체|전부|모두|싹\s*다|페이지\s*전체|사이트|whole|entire|(^|\s)all(\s|$)/i.test(message);
+
+  if (state.selectedElement && state.selectedElement.wgen_id && !_wantsWhole) {
     const handled = await tryFastEdit(message, state.selectedElement);
-    if (handled) {
-      state.selectedElement = null;
-      state.pendingElementAction = false;
-      if (typeof hideSelectedElementBar === "function") hideSelectedElementBar();
-      state.isGenerating = false;
-      el.sendBtn.disabled = false;
-      el.typingIndicator.classList.add("hidden");
-      scrollToBottom("messages");
-      return;
+    state.selectedElement = null;
+    state.pendingElementAction = false;
+    if (typeof hideSelectedElementBar === "function") hideSelectedElementBar();
+    state.isGenerating = false;
+    el.sendBtn.disabled = false;
+    el.typingIndicator.classList.add("hidden");
+    scrollToBottom("messages");
+    if (!handled) {
+      addMessage("messages", "assistant", "⚠️ 선택한 요소만 수정하지 못했습니다. 표현을 바꿔 다시 시도하거나, 페이지 전체를 바꾸려면 요청에 '전체'를 포함해 주세요.");
     }
+    return; // 요소 선택 시엔 전체 재생성하지 않음
   }
 
-  await sendMessageV2(message, displayMessage, state.selectedElement || null);
+  // 전체 편집/생성 (요소 미선택 또는 '전체' 명시)
+  await sendMessageV2(message, displayMessage, _wantsWhole ? null : (state.selectedElement || null));
   return;
 }
 
