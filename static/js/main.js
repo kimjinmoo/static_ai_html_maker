@@ -1519,9 +1519,9 @@ async function routeByIntent(message, displayMessage, elInfo) {
   const _wantsWhole = /전체|전부|모두|싹\s*다|페이지\s*전체|사이트|whole|entire|(^|\s)all(\s|$)/i.test(message);
   const _redesign = /리팩토링|리팩터|재구성|갈아엎|새로\s*디자인|다시\s*디자인|디자인\s*(새로|다시|갈아|바꿔|변경|개선|리뉴얼)|처음부터|전체\s*디자인|새롭게|리뉴얼|refactor|redesign/i.test(message);
 
-  // 페이지 만들기 의도 + 요소 선택 → 새 페이지 vs 섹션 추가 선택 (신규 명시면 바로 새 페이지)
-  const _pageMake = /페이지\s*(를)?\s*(만들|생성|연결)/i.test(message) || /페이지\s*(만들어|생성해)/i.test(message);
-  const _explicitNew = /신규|새\s*(페이지|html|화면|장)|새로운\s*페이지|별도\s*페이지|new\s*page/i.test(message);
+  // 페이지 만들기 의도 + 요소 선택 → 새 페이지 vs 섹션 추가 선택 (신규/html 명시면 바로 새 페이지)
+  const _pageMake = /페이지\s*(를)?\s*(만들|생성|연결|추가)/i.test(message) || /페이지\s*(만들어|생성해|추가해)/i.test(message);
+  const _explicitNew = /신규|새\s*(페이지|html|화면|장)|새로운\s*페이지|별도\s*페이지|new\s*page/i.test(message) || (/html/i.test(message) && /페이지/.test(message));
   if (_pageMake && elInfo && state.generatedHtml) {
     if (_explicitNew) { console.log("[intent] explicit new sub-page"); await createSubPageFromElement(elInfo, message); return; }
     console.log("[intent] ask: new page or section");
@@ -2125,6 +2125,10 @@ window.addEventListener("message", function (e) {
       el.userInput.placeholder = "\u270f\ufe0f \uc120\ud0dd\ud55c \uc694\uc18c\uc5d0 \ub300\ud574 \uc785\ub825\ud558\uc138\uc694...";
       info = `\ud83c\udfaf \uc694\uc18c\ub97c \uc120\ud0dd\ud588\uc2b5\ub2c8\ub2e4.${d.text ? ` (\ud604\uc7ac \ub0b4\uc6a9: "${d.text.slice(0, 30)}")` : ""}\n\n\ucc44\ud305\uc73c\ub85c \uc774\ub807\uac8c \uc694\uccad\ud560 \uc218 \uc788\uc5b4\uc694:\n- \u270f\ufe0f **\ud14d\uc2a4\ud2b8 \ubcc0\uacbd**: "\u25cb\u25cb\ub85c \uc218\uc815"\n- \ud83c\udfa8 **\uc0c9/\uc2a4\ud0c0\uc77c**: "\uae00\uc790 \ube68\uac1b\uac8c", "\ubc30\uacbd #f5f5f5", "\ub465\uae00\uac8c", "\uadf8\ub9bc\uc790 \ub123\uc5b4\uc918"\n- \ud83d\udcd0 **\uc815\ub82c**: "\ud398\uc774\uc9c0 \uac00\uc6b4\ub370 \uc815\ub82c", "\uc67c\ucabd/\uc624\ub978\ucabd \uc815\ub82c"\n- \u2795 **\uc694\uc18c/\uc139\uc158 \ucd94\uac00**: "\uc544\ub798\uc5d0 \uc774\ubbf8\uc9c0 \ucd94\uac00", "\uac24\ub7ec\ub9ac \ucd94\uac00", "\uc704\uc5d0 \ud14d\uc2a4\ud2b8 \ucd94\uac00"\n- \ud83d\uddbc **\uc774\ubbf8\uc9c0 \ubcc0\uacbd**: \uc774\ubbf8\uc9c0 \ucca8\ubd80 \ud6c4 "\uc774 \uc774\ubbf8\uc9c0\ub85c \ubc14\uafd4"\n- \ud83d\udd17 **\ub9c1\ud06c** / \ud83e\udde9 **\ub514\uc790\uc778 \ubcc0\uacbd**("\ub354 \ubaa8\ub358\ud558\uac8c") / \ud83d\uddd1 **\uc0ad\uc81c**("\uc774\uac70 \uc0ad\uc81c")\n\n\ud83d\udca1 \ud654\uba74\uc744 **\uae38\uac8c \ub204\ub974\uba74(\ub871\ud074\ub9ad)** \uadf8 \uc704\uce58\uc5d0 \ucd94\uac00 \ubaa8\ub4dc\ub85c \uc120\ud0dd\ub429\ub2c8\ub2e4.\n(\uc774 \uc694\uc18c\ub9cc \ubc14\ub00c\uace0 \ub098\uba38\uc9c0\ub294 \uc720\uc9c0. \uc804\uccb4\ub97c \ubc14\uafb8\ub824\uba74 "\uc804\uccb4"\ub77c\uace0 \uc801\uc5b4\uc8fc\uc138\uc694.)`;
     }
+    if (d.tag === "a") {
+      info += `\n\n🔗 **링크 전용 작업**: "html 페이지 추가" / "페이지 만들어줘" → 이 링크에 연결되는 **새 페이지**를 생성합니다. "https://주소 링크"로 외부 연결도 가능.`;
+    }
+    info += `\n\n⌨️ **Delete 키**로도 선택한 요소를 바로 삭제할 수 있어요.`;
     addMessage("messages", "assistant", info);
     scrollToBottom("messages");
   }
