@@ -22,7 +22,7 @@ VALID_OPS = ("text", "delete", "style", "href", "src", "html")
 
 def _build_prompt(message, el, design_section="", force_html=False, image_url=""):
     design_block = f"\n## 디자인 일관성 참고 (op=html 시 동일 디자인 유지)\n{design_section}\n" if design_section else ""
-    img_block = f"\n## 첨부 이미지 URL\n{image_url}\n(이미지 변경이면 op=\"src\" value=이 URL. op=\"html\"이면 <img src=\"{image_url}\">로 사용.)\n" if image_url else ""
+    img_block = f"\n## 첨부 이미지 URL\n{image_url}\n(이미지 변경이면 op=\"src\" value=이 URL. op=\"html\"이면 <img src=\"{image_url}\" style=\"max-width:100%;height:auto;display:block\">로 사용. 캐션은 별도 <figcaption>/<p>로 분리해 이미지가 캐션을 덮지 않게.)\n" if image_url else ""
     if force_html:
         return f"""선택된 HTML 요소 **하나만** 다시 작성하세요. 페이지의 다른 부분은 절대 포함하지 마세요.
 
@@ -189,7 +189,7 @@ DIFF_SYSTEM = ("You edit HTML by emitting SEARCH/REPLACE blocks only. "
 
 
 def _build_diff_prompt(message, html, design_section, image_url=""):
-    img_block = f"\n## 첨부 이미지 URL\n{image_url}\n(이미지 삽입/변경 요청이면 <img src=\"{image_url}\"> 형태로 이 URL을 사용하세요.)\n" if image_url else ""
+    img_block = f"\n## 첨부 이미지 URL\n{image_url}\n(이미지 삽입/변경이면 <img src=\"{image_url}\" style=\"max-width:100%;height:auto;display:block\"> 형태로 사용. 캐션은 별도 <figcaption>/<p>로 분리해 이미지가 캐션을 덮지 않게.)\n" if image_url else ""
     return f"""현재 HTML을 사용자 요청대로 수정하세요. **변경되는 부분만** SEARCH/REPLACE 블록으로 출력하세요. 전체 HTML 재작성 절대 금지.
 {img_block}
 
