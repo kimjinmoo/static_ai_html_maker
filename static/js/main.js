@@ -1347,6 +1347,19 @@ async function routeByIntent(message, displayMessage, elInfo) {
       if (_imgUrl) clearUploadedImages();
       return;
     }
+    // -0.5) 정렬 (페이지/가로 기준 요소 자체 정렬) → 결정적 스타일
+    const _align = /(가운데|중앙|센터|center)/i.test(message) ? "center"
+      : /(왼쪽|좌측|left)/i.test(message) ? "left"
+        : /(오른쪽|우측|right)/i.test(message) ? "right" : null;
+    if (_align && /(정렬|align|배치|맞춰|놓|중앙|가운데|센터|왼쪽|오른쪽)/i.test(message)) {
+      let styles;
+      if (_align === "center") styles = { "display": "block", "margin-left": "auto", "margin-right": "auto", "width": "fit-content", "max-width": "100%", "text-align": "center" };
+      else if (_align === "left") styles = { "display": "block", "margin-left": "0", "margin-right": "auto", "width": "fit-content" };
+      else styles = { "display": "block", "margin-left": "auto", "margin-right": "0", "width": "fit-content" };
+      console.log("[intent] element align", _align);
+      await execElementPatch({ op: "style", styles }, elInfo);
+      return;
+    }
     // 0) 업로드 이미지 + 이미지 의도 → src 즉시 교체
     if (_imgUrl && /이미지|사진|그림|image|img/i.test(message)) {
       const isImgEl = (elInfo.tag === "img") || /<img/i.test(elInfo.html || "");
