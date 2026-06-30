@@ -868,7 +868,7 @@ function getSelectedMode() {
 // ── 통일 전송 (v2) ──
 // /api/chat/stream/v2 + createSSEReader(type 라우팅).
 // html→미리보기, chat→채팅창, status→모달. 콘텐츠 추측·덤프 없음.
-async function sendMessageV2(message, displayMessage, elementContextObj) {
+async function sendMessageV2(message, displayMessage, elementContextObj, forcedMode) {
   if (!state.currentProjectId) {
     await generateProjectId();
     if (!state.projectTitle) state.projectTitle = message.slice(0, 30) + (message.length > 30 ? "..." : "");
@@ -903,7 +903,7 @@ async function sendMessageV2(message, displayMessage, elementContextObj) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
-        mode: getSelectedMode(),
+        mode: forcedMode || getSelectedMode(),
         design_system: designSystem,
         history: state.chatHistory.slice(-5),
         current_html: savedHtml,           // 전체 — 절단 없음
@@ -1140,17 +1140,65 @@ async function tryFastEdit(message, elInfo) {
   }
   console.log("[fast-edit] patch =", JSON.stringify(patch), "wgen_id =", elInfo.wgen_id);
   if (!patch || patch.op === "complex") { console.warn("[fast-edit] complex/no-patch → fallback"); return false; }
+  return await execElementPatch(patch, elInfo);
+}
+
+// 패치 1개를 선택 요소에 적용 + 채팅 피드백. 항상 true 반환(전체 재생성 방지).
+async function execElementPatch(patch, elInfo) {
   const ok = await applyPatchToPreview(patch, elInfo.wgen_id);
-  console.log("[fast-edit] applyPatchToPreview ok =", ok);
+  console.log("[fast-edit] applyPatchToPreview ok =", ok, "op =", patch.op);
   if (!ok) {
-    addMessage("messages", "assistant", "⚠️ 선택 요소에 패치를 적용하지 못했습니다(미리보기에서 요소를 다시 선택해 주세요). 콘솔 로그(F12)를 확인해 주세요.");
-    return true; // 전체 재생성 방지 — 안내만
+    addMessage("messages", "assistant", "⚠️ 선택 요소에 패치를 적용하지 못했습니다(미리보기에서 요소를 다시 선택해 주세요).");
+    return true;
   }
   const label = _PATCH_LABEL[patch.op] || "수정";
   addMessage("messages", "assistant", `⚡ 빠른 수정 완료 (${label}) — 선택 요소만 변경, 전체 디자인 유지.`);
   state.chatHistory.push({ role: "assistant", content: `${label} 완료` });
+  saveProject();
   enableReviewBtn();
   return true;
+}
+
+// AI 의도 분류 기반 라우팅 — 채팅 문장을 AI가 이해해 결정적으로 분기한다.
+async function routeByIntent(message, displayMessage, elInfo) {
+  // 1) 고신뢰 휴리스틱(선택 요소): 즉시 패치 (AI 호출 절약)
+  if (elInfo) {
+    const lp = tryLocalPatch(message, elInfo);
+    if (lp) { console.log("[intent] local fast-patch", JSON.stringify(lp)); await execElementPatch(lp, elInfo); return; }
+  }
+  // 2) AI 의도 분류
+  let intent;
+  try {
+    const r = await fetch("/api/intent", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, has_element: !!elInfo, has_html: !!state.generatedHtml, element: elInfo || null }),
+    });
+    intent = await r.json();
+  } catch (e) { intent = { action: "edit", scope: elInfo ? "element" : "page", op: "none" }; }
+  console.log("[intent]", JSON.stringify(intent));
+
+  // 3) 라우팅
+  if (intent.action === "ask") { await sendMessageV2(message, displayMessage, null, "ask"); return; }
+  if (intent.action === "generate" || intent.action === "new_page") {
+    await sendMessageV2(message, displayMessage, null, "generate"); return;
+  }
+  // 요소 범위 편집/삭제 → 그 요소만 패치
+  if (elInfo && intent.scope === "element" && (intent.action === "edit" || intent.action === "delete")) {
+    let patch = null;
+    if (intent.action === "delete") patch = { op: "delete" };
+    else if (intent.op === "text" && intent.value) patch = { op: "text", text: intent.value };
+    else if (intent.op === "style" && intent.styles) patch = { op: "style", styles: intent.styles };
+    else if (intent.op === "href" && intent.value) patch = { op: "href", href: intent.value };
+    else if (intent.op === "src" && intent.value) patch = { op: "src", src: intent.value };
+    if (patch) { await execElementPatch(patch, elInfo); return; }
+    // op=html/none 등 → 요소만 재작성(force_html) 시도, 실패해도 전체 재생성 안 함
+    await tryFastEdit(message, elInfo); return;
+  }
+  // 사이트 전체 → 전체 편집
+  if (intent.scope === "site") { await sendMessageV2(message, displayMessage, null, "edit"); return; }
+  // 페이지 일부 편집/삭제 → diff 소스 편집, 실패 시 전체 편집 폴백
+  const handled = await tryDiffEdit(message);
+  if (!handled) await sendMessageV2(message, displayMessage, elInfo || null);
 }
 
 // ── Diff 기반 소스 편집 (바이브코딩 방식: SEARCH/REPLACE 블록) ──
@@ -1290,17 +1338,19 @@ async function sendMessage() {
   el.typingIndicator.classList.remove("hidden");
   scrollToBottom("messages");
 
-  // 통일 경로(v2)로 라우팅. user history는 위에서 처리됨(첫 생성은 여기서 보강).
+  // user history (첫 생성은 여기서 보강; 요소/일반은 위에서 push됨)
   if (isFirstGeneration) state.chatHistory.push({ role: "user", content: displayMessage });
 
-  // 규칙: 요소가 선택돼 있으면 "그 요소만" 수정한다. 페이지 전체 변경은
-  // 요청에 '전체/전부/모두/사이트' 등 전역 의도가 명시됐을 때만.
-  const _wantsWhole = /전체|전부|모두|싹\s*다|페이지\s*전체|사이트|whole|entire|(^|\s)all(\s|$)/i.test(message);
-  console.log("[route] selectedElement =", !!state.selectedElement, "wgen_id =", state.selectedElement && state.selectedElement.wgen_id, "wantsWhole =", _wantsWhole, "msg =", message);
-
-  if (state.selectedElement && !_wantsWhole) {
-    console.log("[route] → fast-edit (element-scoped)");
-    const handled = await tryFastEdit(message, state.selectedElement);
+  const elInfo = state.selectedElement || null;
+  try {
+    if (isFirstGeneration) {
+      // 최초 생성은 명확 — 바로 전체 생성
+      await sendMessageV2(message, displayMessage, null, "generate");
+    } else {
+      // AI 의도 분류로 결정적 라우팅 (요소만/페이지일부 diff/전체/질문/새페이지)
+      await routeByIntent(message, displayMessage, elInfo);
+    }
+  } finally {
     state.selectedElement = null;
     state.pendingElementAction = false;
     if (typeof hideSelectedElementBar === "function") hideSelectedElementBar();
@@ -1308,31 +1358,7 @@ async function sendMessage() {
     el.sendBtn.disabled = false;
     el.typingIndicator.classList.add("hidden");
     scrollToBottom("messages");
-    if (!handled) {
-      addMessage("messages", "assistant", "⚠️ 선택한 요소만 수정하지 못했습니다. 표현을 바꿔 다시 시도하거나, 페이지 전체를 바꾸려면 요청에 '전체'를 포함해 주세요.");
-    }
-    return; // 요소 선택 시엔 전체 재생성하지 않음
   }
-
-  // Diff 편집: 기존 페이지의 추가/수정/삭제는 변경 부분만 패치 (요소 미선택, 전체/질문/새페이지 아님)
-  const _editVerb = /추가|수정|삭제|바꿔|변경|고쳐|넣어|빼|제거|없애|교체|줄여|늘려|바꿔줘|수정해|추가해|삭제해/.test(message);
-  const _isQuestion = /\?|어때|어떻게\s*생각|추천|좋을까|괜찮|뭐가\s*나/.test(message);
-  const _isNewPage = (typeof detectMultiPage === "function" && detectMultiPage(message) === true) ||
-    /새\s*페이지|서브\s*페이지|페이지\s*추가|페이지\s*생성|하위\s*페이지/.test(message);
-  if (state.generatedHtml && !isFirstGeneration && !_wantsWhole && !_isQuestion && !_isNewPage && _editVerb) {
-    const handled = await tryDiffEdit(message);
-    if (handled) {
-      state.isGenerating = false;
-      el.sendBtn.disabled = false;
-      el.typingIndicator.classList.add("hidden");
-      scrollToBottom("messages");
-      return;
-    }
-    // diff 실패 → 전체 재생성으로 폴백
-  }
-
-  // 전체 편집/생성 (요소 미선택 또는 '전체' 명시)
-  await sendMessageV2(message, displayMessage, _wantsWhole ? null : (state.selectedElement || null));
   return;
 }
 
