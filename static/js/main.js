@@ -930,6 +930,7 @@ async function sendMessageV2(message, displayMessage, elementContextObj, forcedM
   let chatText = "";
   let finalHtml = "";
   let sawHtml = false;
+  let sawError = false;
   const multiPages = {};
 
   try {
@@ -1018,7 +1019,10 @@ async function sendMessageV2(message, displayMessage, elementContextObj, forcedM
       sawHtml = true;
       const p = d.payload;
       if (typeof p === "string") {
-        finalHtml = p; state.generatedHtml = p; updatePreview(p, true);
+        // 빈/부분 HTML(흰 화면 유발)은 무시 — 완전한 문서만 렌더
+        if (p && p.trim().length > 50) {
+          finalHtml = p; state.generatedHtml = p; updatePreview(p, true);
+        }
         _advance("gen");  // 단일: 콘텐츠 생성 완료 → 조립 단계
       } else if (p && p.file) {
         multiPages[p.file] = p.html;
@@ -1035,6 +1039,7 @@ async function sendMessageV2(message, displayMessage, elementContextObj, forcedM
       _renderTodo();
     });
     sse.on("error", (d) => {
+      sawError = true;
       assistantDiv.innerHTML = `<span style="color: var(--error);">⚠️ ${d.payload}</span>`;
     });
     await sse.start();
@@ -1063,7 +1068,7 @@ async function sendMessageV2(message, displayMessage, elementContextObj, forcedM
         loadFileTree(state.currentProjectId);
       }
       state.chatHistory.push({ role: "assistant", content: "홈페이지를 생성했습니다. 미리보기를 확인하세요." });
-      if (!chatText) assistantDiv.innerHTML = "<div>✅ 완료! 오른쪽 미리보기를 확인하세요.</div>";
+      if (!chatText && !sawError) assistantDiv.innerHTML = "<div>✅ 완료! 오른쪽 미리보기를 확인하세요.</div>";
       saveProject();
       enableReviewBtn();
     } else if (chatText) {
@@ -2447,8 +2452,9 @@ window.exportProject = function () {
   if (!state.currentProjectId) { alert("\uc800\uc7a5\ub41c \ud504\ub85c\uc81d\ud2b8\uac00 \uc5c6\uc2b5\ub2c8\ub2e4."); return; }
   const link = document.createElement("a");
   link.href = `/api/projects/${state.currentProjectId}/export`;
-  link.download = `${state.currentProjectId}.zip`;
+  link.download = `${state.currentProjectId}_deploy.zip`;
   link.click();
+  addMessage("messages", "assistant", "\ud83d\udce6 \ubc30\ud3ec\uc6a9 ZIP\uc744 \ub0b4\ub824\ubc1b\uc558\uc2b5\ub2c8\ub2e4. \ud3b8\uc9d1\uae30 \ud754\uc801 \uc81c\uac70 \u00b7 \ub0b4\ubd80 \ub9c1\ud06c \uc815\ub9ac \u00b7 \uc2a4\ud06c\ub864 \uc560\ub2c8\uba54\uc774\uc158 \ud3ec\ud568\ub41c \uc815\uc801 HTML\uc785\ub2c8\ub2e4. \uc555\ucd95 \ud574\uc81c \ud6c4 \uadf8\ub300\ub85c \ud638\uc2a4\ud305\ud558\uc138\uc694.");
 };
 window.updateProjectTitle = function (val) { state.projectTitle = val || "\uc81c\ubaa9 \uc5c6\uc74c"; if (state.currentProjectId) saveProject(); };
 

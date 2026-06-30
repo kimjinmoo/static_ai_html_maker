@@ -15,6 +15,55 @@ from app.utils import get_projects_dir, ensure_complete_html
 project_bp = Blueprint("project", __name__)
 
 
+# 배포 시 data-animate 요소를 스크롤 진입 시 노출 (에디터 미리보기 스크립트 없이도 동작)
+_DEPLOY_REVEAL_SCRIPT = (
+    "<script data-deploy-reveal>(function(){var els=document.querySelectorAll('[data-animate]');"
+    "if(!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('visible')});return;}"
+    "var io=new IntersectionObserver(function(en){en.forEach(function(x){"
+    "if(x.isIntersecting){x.target.classList.add('visible');io.unobserve(x.target);}})},{threshold:0.08});"
+    "els.forEach(function(e){io.observe(e);});})();</script>"
+)
+
+
+def _clean_for_deploy(html):
+    """저장된 HTML을 배포용 정적 HTML로 정제한다.
+    - 내부 네비 링크: href='javascript:void(0)' + data-nav='경로' → href='경로'
+    - 편집기 흔적(data-wgen-id, wgen-* 클래스, wgen 전용 base/style/script) 제거
+    - data-animate 노출용 standalone 스크립트 주입(없을 때만)"""
+    if not html:
+        return html
+
+    def _fix_anchor(m):
+        tag = m.group(0)
+        nav = re.search(r'\sdata-nav="([^"]*)"', tag)
+        if not nav:
+            return tag
+        target = nav.group(1)
+        tag = re.sub(r'\sdata-nav="[^"]*"', "", tag)
+        if re.search(r'\shref="[^"]*"', tag):
+            tag = re.sub(r'\shref="[^"]*"', ' href="%s"' % target, tag, count=1)
+        else:
+            tag = tag.replace("<a", '<a href="%s"' % target, 1)
+        return tag
+
+    html = re.sub(r"<a\b[^>]*>", _fix_anchor, html, flags=re.IGNORECASE)
+
+    # 편집기 흔적 방어적 제거
+    html = re.sub(r'\sdata-wgen-id="[^"]*"', "", html)
+    html = re.sub(r"\s?\bwgen-(?:hover|selected)\b", "", html)
+    html = re.sub(r'<base\b[^>]*id="wgen-base"[^>]*>', "", html, flags=re.IGNORECASE)
+    html = re.sub(r'<style\b[^>]*id="wgen-reveal"[^>]*>[\s\S]*?</style>', "", html, flags=re.IGNORECASE)
+    html = re.sub(r'<script\b[^>]*data-wgen[^>]*>[\s\S]*?</script>', "", html, flags=re.IGNORECASE)
+
+    # data-animate 노출 스크립트 주입 (이미 있으면 생략)
+    if "data-animate" in html and "data-deploy-reveal" not in html:
+        if re.search(r"</body>", html, flags=re.IGNORECASE):
+            html = re.sub(r"</body>", _DEPLOY_REVEAL_SCRIPT + "\n</body>", html, count=1, flags=re.IGNORECASE)
+        else:
+            html += "\n" + _DEPLOY_REVEAL_SCRIPT
+    return html
+
+
 def _extract_assets(project_dir, html, file_path="index.html"):
     """Extract inline CSS/JS from HTML to separate files and return HTML with external links."""
     css_dir = os.path.join(project_dir, "assets", "css")
@@ -545,25 +594,33 @@ def export_project(project_id):
         if not os.path.exists(html_path):
             return jsonify({"error": "\ud504\ub85c\uc81d\ud2b8\ub97c \ucc3e\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4."}), 404
 
-        print(f"\n[Export] \ud504\ub85c\uc81d\ud2b8 \ub0b4\ubcf4\ub0b4\uae30: {project_id}.zip")
+        print(f"\n[Export] \ubc30\ud3ec\uc6a9 \ub0b4\ubcf4\ub0b4\uae30: {project_id}.zip")
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
             with open(html_path, 'r', encoding='utf-8') as f:
-                zf.writestr("index.html", f.read())
+                zf.writestr("index.html", _clean_for_deploy(f.read()))
             for d in ["assets/images/.gitkeep", "pages/.gitkeep"]:
                 zf.writestr(d, "")
 
         zip_buffer.seek(0)
         return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name=f"{project_id}.zip")
 
-    print(f"\n[Export] \ud504\ub85c\uc81d\ud2b8 \ub0b4\ubcf4\ub0b4\uae30: {project_id}.zip")
+    print(f"\n[Export] \ubc30\ud3ec\uc6a9 \ub0b4\ubcf4\ub0b4\uae30: {project_id}.zip")
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         for root, dirs, files in os.walk(project_dir):
+            # \uba54\ud0c0/\uc784\uc2dc \ud30c\uc77c\uc740 \ubc30\ud3ec zip\uc5d0\uc11c \uc81c\uc678
+            dirs[:] = [d for d in dirs if d not in (".git", "__pycache__")]
             for file in files:
+                if file in ("project.json", "meta.json") or file.endswith((".part", ".tmp")):
+                    continue
                 file_path = os.path.join(root, file)
                 arcname = os.path.relpath(file_path, project_dir)
-                zf.write(file_path, arcname)
+                if file.lower().endswith((".html", ".htm")):
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        zf.writestr(arcname, _clean_for_deploy(f.read()))
+                else:
+                    zf.write(file_path, arcname)
 
     zip_buffer.seek(0)
-    return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name=f"{project_id}.zip")
+    return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name=f"{project_id}_deploy.zip")

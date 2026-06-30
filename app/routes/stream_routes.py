@@ -161,9 +161,11 @@ def chat_stream_v2():
                 html = ensure_complete_html(html)
             else:  # EDIT / DELETE
                 html = _extract_full_html(full)
-                if not html:
+                # 완전한 문서가 아니면(추출 실패/부분·잘린 응답) 현재 HTML 유지 — 흰 화면 방지
+                _h = (html or "").lower()
+                if (not html) or ("<body" not in _h) or ("</body>" not in _h) or ("</html>" not in _h):
                     yield sse_event(EventType.ERROR,
-                                    "수정 결과를 해석하지 못했습니다. 다시 시도해 주세요.",
+                                    "수정 결과를 완전히 해석하지 못해 기존 페이지를 유지합니다. 더 구체적으로(또는 요소 선택 후) 요청해 주세요.",
                                     phase=phase)
                     yield sse_event(EventType.DONE, {"html": current_html}, phase=phase)
                     return
