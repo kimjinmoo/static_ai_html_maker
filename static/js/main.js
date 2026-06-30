@@ -889,8 +889,10 @@ async function sendMessageV2(message, displayMessage, elementContextObj, forcedM
   if (state.selectedDesignContent) designSystem.design_content = state.selectedDesignContent;
   if (state.projectTitle) designSystem.brand = state.projectTitle;
 
-  const assistantDiv = addMessage("messages", "assistant", isFirst ? "⏳ 홈페이지 생성 중..." : "⏳ 처리 중...");
-  showGenerating(!isFirst);
+  const isAsk = forcedMode === "ask";
+  // ASK(대화/질문)는 생성 모달 없이 채팅에만 답변
+  const assistantDiv = addMessage("messages", "assistant", isAsk ? "💬 답변 중..." : (isFirst ? "⏳ 홈페이지 생성 중..." : "⏳ 처리 중..."));
+  if (!isAsk) showGenerating(!isFirst);
 
   let chatText = "";
   let finalHtml = "";
