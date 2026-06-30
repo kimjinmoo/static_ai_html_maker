@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebGen AI - 홈페이지 마법사</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=deploy1" />
+    <link rel="stylesheet" href="/static/css/style.css?v=oaimodels1" />
   </head>
   <body>
     <div class="app-container">
@@ -715,16 +715,31 @@
               </ol>
             </div>
             <div class="setting-row">
+              <label class="setting-label" for="set-openai-model">모델</label>
+              <select id="set-openai-model" class="setting-input" onchange="onOpenAIModelChange()">
+                <optgroup label="무료 / 저비용">
+                  <option value="deepseek-v4-flash">DeepSeek V4 Flash · 무료 (기본)</option>
+                  <option value="deepseek-chat">DeepSeek Chat · 저비용</option>
+                  <option value="llama-3.3-70b-versatile">Groq Llama 3.3 70B · 무료 등급</option>
+                  <option value="gpt-4o-mini">OpenAI GPT-4o-mini · 저비용</option>
+                </optgroup>
+                <optgroup label="유료 / 고품질">
+                  <option value="deepseek-reasoner">DeepSeek Reasoner · 유료</option>
+                  <option value="gpt-4o">OpenAI GPT-4o · 유료</option>
+                  <option value="o1">OpenAI o1 · 유료</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="setting-row" style="margin-top:-6px">
+              <span style="font-size:12px;color:var(--text-muted,#888)">모델 선택 시 Base URL이 제공처에 맞게 자동 설정됩니다. (DeepSeek/Groq/OpenAI)</span>
+            </div>
+            <div class="setting-row">
               <label class="setting-label" for="set-openai-base">Base URL</label>
-              <input id="set-openai-base" class="setting-input" type="text" placeholder="https://api.openai.com/v1" />
+              <input id="set-openai-base" class="setting-input" type="text" placeholder="https://api.deepseek.com/v1" />
             </div>
             <div class="setting-row">
               <label class="setting-label" for="set-openai-key">API 키</label>
               <input id="set-openai-key" class="setting-input" type="password" placeholder="(설정 시 변경, 빈칸이면 유지)" />
-            </div>
-            <div class="setting-row">
-              <label class="setting-label" for="set-openai-model">모델</label>
-              <input id="set-openai-model" class="setting-input" type="text" placeholder="gpt-4o-mini / deepseek-chat / llama-3.1-70b ..." />
             </div>
           </div>
 
@@ -825,6 +840,6 @@
       </div>
     </div>
 
-    <script src="/static/js/main.js?v=deploy1"></script>
+    <script src="/static/js/main.js?v=oaimodels1"></script>
   </body>
 </html>

@@ -20,9 +20,10 @@ OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:7b")
 
 # OpenAI 호환 (OpenAI / DeepSeek / Groq / Together / OpenRouter / vLLM 등)
+# 기본값은 무료 등급의 DeepSeek V4 Flash
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.deepseek.com/v1")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "deepseek-v4-flash")
 
 LLAMA_KWARGS = {
     "n_ctx": N_CTX,

@@ -2631,6 +2631,21 @@ function onBackendChange() {
   show("set-group-local", b === "local");
 }
 
+// OpenAI 호환 모델 선택 시 제공처에 맞는 Base URL 자동 설정
+const _OPENAI_PROVIDER_BASES = ["https://api.deepseek.com/v1", "https://api.openai.com/v1", "https://api.groq.com/openai/v1", ""];
+function onOpenAIModelChange() {
+  const model = (document.getElementById("set-openai-model") || {}).value || "";
+  const baseEl = document.getElementById("set-openai-base");
+  if (!baseEl) return;
+  let base = "";
+  if (/deepseek/i.test(model)) base = "https://api.deepseek.com/v1";
+  else if (/llama|groq|mixtral|gemma/i.test(model)) base = "https://api.groq.com/openai/v1";
+  else if (/^(gpt|o1|o3|chatgpt)/i.test(model)) base = "https://api.openai.com/v1";
+  // 사용자가 직접 입력한 커스텀 base는 보존 (알려진 제공처 기본값일 때만 교체)
+  if (base && _OPENAI_PROVIDER_BASES.includes(baseEl.value.trim())) baseEl.value = base;
+  else if (base && !baseEl.value.trim()) baseEl.value = base;
+}
+
 async function openSettingsModal() {
   const modal = document.getElementById("settings-modal");
   if (!modal) return;
@@ -2659,7 +2674,15 @@ async function openSettingsModal() {
     keyField.placeholder = s.gemini_api_key_set ? "(설정됨 — 변경 시에만 입력)" : "API 키 입력";
     // openai
     const ob = document.getElementById("set-openai-base"); if (ob) ob.value = s.openai_base_url || "";
-    const om = document.getElementById("set-openai-model"); if (om) om.value = s.openai_model || "";
+    const om = document.getElementById("set-openai-model");
+    if (om && s.openai_model) {
+      if (![...om.options].some(o => o.value === s.openai_model)) {
+        const opt = document.createElement("option");
+        opt.value = s.openai_model; opt.textContent = s.openai_model + " (현재)";
+        om.insertBefore(opt, om.firstChild);
+      }
+      om.value = s.openai_model;
+    }
     const ok = document.getElementById("set-openai-key");
     if (ok) { ok.value = ""; ok.placeholder = s.openai_api_key_set ? "(설정됨 — 변경 시에만 입력)" : "API 키 입력"; }
   } catch (e) { /* ignore */ }
