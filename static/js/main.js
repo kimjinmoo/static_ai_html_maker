@@ -1347,6 +1347,27 @@ async function routeByIntent(message, displayMessage, elInfo) {
       if (_imgUrl) clearUploadedImages();
       return;
     }
+    // -0.7) 마진/패딩 (여백) Npx → 결정적 스타일 (AI 미사용)
+    if (/(마진|margin|패딩|padding|여백)/i.test(message)) {
+      const prop = /(패딩|padding)/i.test(message) ? "padding" : "margin";
+      const valM = message.match(/(\d+(?:\.\d+)?)\s*(px|rem|em|%)?/i);
+      if (valM) {
+        const val = valM[1] + (valM[2] || "px");
+        let sides;
+        if (/(상하|위아래|아래위|세로|수직)/i.test(message)) sides = ["top", "bottom"];
+        else if (/(좌우|양옆|가로|수평)/i.test(message)) sides = ["left", "right"];
+        else if (/(상단|위쪽|위\b|^위|top)/i.test(message)) sides = ["top"];
+        else if (/(하단|아래쪽|아래|bottom)/i.test(message)) sides = ["bottom"];
+        else if (/(왼쪽|좌측|left)/i.test(message)) sides = ["left"];
+        else if (/(오른쪽|우측|right)/i.test(message)) sides = ["right"];
+        else sides = ["top", "right", "bottom", "left"];
+        const styles = {};
+        sides.forEach(s => { styles[`${prop}-${s}`] = val; });
+        console.log("[intent] spacing", prop, val, sides);
+        await execElementPatch({ op: "style", styles }, elInfo);
+        return;
+      }
+    }
     // -0.5) 정렬 (페이지/가로 기준 요소 자체 정렬) → 결정적 스타일
     const _align = /(가운데|중앙|센터|center)/i.test(message) ? "center"
       : /(왼쪽|좌측|left)/i.test(message) ? "left"
