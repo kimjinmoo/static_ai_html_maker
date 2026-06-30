@@ -1543,6 +1543,7 @@ window._chooseSection = function () {
 
 // 선택 요소 삭제 (단일/멀티) — Delete 키 또는 "삭제" 요청
 async function deleteSelectedElement() {
+  console.log("[delete] deleteSelectedElement", state.multiSelected.length, state.selectedElement && state.selectedElement.wgen_id);
   if (state.multiSelected && state.multiSelected.length) { await deleteMultiSelected(); return true; }
   if (state.selectedElement && state.selectedElement.wgen_id) {
     await execElementPatch({ op: "delete" }, state.selectedElement);
@@ -2287,15 +2288,20 @@ window.addEventListener("message", function (e) {
   if (d.type === "element-deselected") { if (!state.pendingElementAction) { hideSelectedElementBar(); } }
 });
 
-// 부모 화면에 포커스가 있을 때도 Delete로 선택 요소 삭제
+// Delete로 선택 요소 삭제 — 선택 시 채팅창에 포커스가 가므로, 입력창이라도 비어있으면 삭제
 document.addEventListener("keydown", function (e) {
+  if (e.key !== "Delete" && e.key !== "Backspace" && e.keyCode !== 46) return;
+  const hasSel = state.selectedElement || (state.multiSelected && state.multiSelected.length);
+  if (!hasSel) return;
   const t = e.target;
-  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-  if (e.key === "Delete" && (state.selectedElement || (state.multiSelected && state.multiSelected.length))) {
-    e.preventDefault();
-    deleteSelectedElement();
-  }
-});
+  const inField = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+  // 타이핑 중(입력창에 글자 있음)이면 무시 — 빈 입력창/그 외 영역에서만 삭제
+  if (inField && (t.value || t.textContent || "").length > 0) return;
+  // Backspace는 입력창에서 절대 가로채지 않음(오작동 방지) — Delete만 입력창에서 허용
+  if (inField && e.key === "Backspace") return;
+  e.preventDefault();
+  deleteSelectedElement();
+}, true);
 
 // ── Export Project (Deployable HTML) ──
 function exportProject() {
