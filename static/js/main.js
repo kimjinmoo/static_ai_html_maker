@@ -1235,8 +1235,9 @@ async function routeByIntent(message, displayMessage, elInfo) {
   }
 
   // ── 요소 미선택 ──
-  // 업로드 이미지가 있으면 → 코드로 갤러리 섹션 결정적 삽입 (AI 미사용, 확실히 적용)
-  if (state.uploadedImages.length && state.generatedHtml) {
+  // 업로드 이미지 + 이미지를 쓰려는 의도가 있을 때만 → 갤러리 섹션 결정적 삽입
+  const _imgIntent = /이미지|사진|그림|갤러리|꾸며|넣어|넣어줘|추가|배치|사용|적용|업로드|첨부|image|photo|gallery/i.test(message);
+  if (state.uploadedImages.length && state.generatedHtml && _imgIntent) {
     console.log("[intent] images(no element) → deterministic gallery insert", state.uploadedImages.length);
     insertImageGallery(state.uploadedImages.slice());
     clearUploadedImages();
