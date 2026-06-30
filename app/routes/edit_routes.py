@@ -131,6 +131,7 @@ def _build_intent_prompt(message, has_element, has_html, el, image_url=""):
   - 내부 구조/디자인 재작성 → op="html". / 삭제 → action="delete".
 - 선택 요소 없이 현재 페이지 일부(섹션/문구) 추가·수정·삭제 → action="edit"/"delete", scope="page", op="none".
 - "전체/사이트 전부 다시/싹 다" → scope="site".
+- "리팩토링/재구성/디자인 새로/다시 디자인/처음부터/갈아엎/리뉴얼/새롭게" 등 **페이지 전체를 다시 디자인**하는 요청 → action="edit", scope="site".
 - value는 사용자가 의도한 **새 텍스트/URL**만 넣으세요. 요소의 **클래스명·태그명·기존 속성값을 value로 절대 쓰지 마세요**. 추출 못 하면 빈 문자열.
 - 예: "자전거로 text 수정"(h1 선택) → {{"action":"edit","scope":"element","op":"text","value":"자전거"}}
 JSON만 출력."""

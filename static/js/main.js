@@ -1167,6 +1167,14 @@ async function routeByIntent(message, displayMessage, elInfo) {
   const _lastImg = state.uploadedImages.length ? state.uploadedImages[state.uploadedImages.length - 1] : null;
   const _imgUrl = _lastImg ? _lastImg.url : "";
 
+  // 전체 재디자인/리팩토링 요청 (요소 미선택) → 페이지 전체 편집
+  const _redesign = /리팩토링|리팩터|재구성|갈아엎|새로\s*디자인|다시\s*디자인|디자인\s*(새로|다시|갈아|바꿔|변경|개선|리뉴얼)|처음부터|전체\s*디자인|새롭게|리뉴얼|refactor|redesign/i.test(message);
+  if (_redesign && !elInfo) {
+    console.log("[intent] redesign → full page edit");
+    await sendMessageV2(message, displayMessage, null, "edit");
+    return;
+  }
+
   // 0) 업로드 이미지 + 선택 요소 + 이미지 의도 → src 즉시 교체 (요소가 img거나 img 포함)
   if (elInfo && _imgUrl && /이미지|사진|그림|image|img/i.test(message)) {
     const isImgEl = (elInfo.tag === "img") || /<img/i.test(elInfo.html || "");
