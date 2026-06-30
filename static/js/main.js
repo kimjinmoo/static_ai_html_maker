@@ -1432,10 +1432,21 @@ async function routeByIntent(message, displayMessage, elInfo) {
     if (/추가|넣어|넣어줘|삽입|붙여/i.test(message)) {
       const pos = _insertPosition(message);
       const _tpl = findSectionTemplate(message); // 갤러리/슬라이드/상품/가격표/후기/FAQ...
-      const insHtml = _tpl ? _tpl.html : buildElementToInsert(message, _imgUrl);
-      console.log("[intent] element insert", pos, _tpl ? _tpl.label : "(요소)");
+      let insHtml;
+      if (_tpl) {
+        insHtml = _tpl.html;
+      } else if (/이미지|사진|그림|image|img/i.test(message) && state.uploadedImages.length) {
+        // 업로드한 이미지 전부 삽입 (여러 개면 그리드)
+        const imgs = state.uploadedImages.map(im => `<img src="${im.url}" alt="이미지" style="max-width:100%;height:auto;display:block;border-radius:8px" />`).join("\n");
+        insHtml = state.uploadedImages.length > 1
+          ? `<div class="grid grid-${Math.min(state.uploadedImages.length, 3)}" style="gap:16px;margin:16px 0">${imgs}</div>`
+          : imgs;
+      } else {
+        insHtml = buildElementToInsert(message, _imgUrl);
+      }
+      console.log("[intent] element insert", pos, _tpl ? _tpl.label : `(요소, ${state.uploadedImages.length}img)`);
       await execElementPatch({ op: "insert", position: pos, html: insHtml }, elInfo);
-      if (_imgUrl) clearUploadedImages();
+      if (state.uploadedImages.length) clearUploadedImages();
       return;
     }
     // -0.7) 마진/패딩 (여백) Npx → 결정적 스타일 (AI 미사용)
@@ -1497,11 +1508,9 @@ async function routeByIntent(message, displayMessage, elInfo) {
         await execElementPatch({ op: "html", html: imgHtml }, elInfo); clearUploadedImages(); return;
       }
     }
-    // 1) 고신뢰 휴리스틱 (이미지 없을 때)
-    if (!_imgUrl) {
-      const lp = tryLocalPatch(message, elInfo);
-      if (lp) { console.log("[intent] local fast-patch", JSON.stringify(lp)); await execElementPatch(lp, elInfo); return; }
-    }
+    // 1) 고신뢰 휴리스틱 (텍스트/색/삭제 등 — 이미지 변경/삽입은 위에서 처리됨)
+    const lp = tryLocalPatch(message, elInfo);
+    if (lp) { console.log("[intent] local fast-patch", JSON.stringify(lp)); await execElementPatch(lp, elInfo); return; }
     // 2) AI 의도로 op/value만 얻고 scope는 element로 강제
     let intent;
     try {
