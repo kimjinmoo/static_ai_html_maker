@@ -2549,61 +2549,21 @@ function closeReview() {
 }
 
 async function fixAllIssues() {
-  if (!state.generatedHtml) return;
+  if (!state.generatedHtml) { addMessage("messages", "assistant", "⚠️ 먼저 페이지를 생성해 주세요."); return; }
   const btn = $("btn-fix-all");
   if (btn) btn.disabled = true;
-  const prompt = `\ub2e4\uc74c HTML\uc758 \ubb38\uc81c\uc810\uc744 \uc218\uc815\ud558\uc138\uc694. \ud648\ud398\uc774\uc9c0\uc758 \uc804\uccb4 \uad6c\uc870\ub97c \uc720\uc9c0\ud558\uba74\uc11c \ub2e4\uc74c \uc0ac\ud56d\ub9cc \uc218\uc815\ud558\uc138\uc694:
-- \uc5ec\ubc31 \uc870\uc815 (padding/margin \ud1b5\uc77c)
-- \uac80\uce68 \ubb38\uc81c \ud574\uacb0
-- \uc815\ub82c \ub9de\ucd98
-- \ud0c0\uc774\ud3ec\uadf8\ub798\ud53c \uc77c\uad00\uc131
-- \ubc18\uc751\ud615 \ubcf4\uc644
-- \uc811\uadfc\uc131 \uac1c\uc120
-
-\ud604\uc7ac HTML:
-\`\`\`html
-${state.generatedHtml.slice(0, 20000)}
-\`\`\`
-
-\uac19\uc740 \ub514\uc790\uc778 \uc2a4\ud0c0\uc77c\uc744 \uc720\uc9c0\ud558\uba74\uc11c \uc704 \ubb38\uc81c\uc810\ub9cc \uc218\uc815\ud55c \uc644\uc804\ud55c HTML\uc744 ===HTML_START=== \uc640 ===HTML_END=== \uc0ac\uc774\uc5d0 \ucd9c\ub825\ud558\uc138\uc694.`;
-  addMessage("messages", "user", "\ud1b5\ud569 \uc218\uc815 \uc694\uccad");
-  const assistantDiv = addMessage("messages", "assistant", "\u23f3 \uc218\uc815 \uc911...");
+  addMessage("messages", "user", "🛠 통합 수정 요청 (여백·정렬·타이포·반응형·접근성)");
+  const msg = "전체 페이지의 여백/패딩, 겹침, 정렬, 타이포그래피 일관성, 반응형, 접근성 문제를 수정해줘. 기존 디자인 스타일과 구조·콘텐츠는 그대로 유지하고 문제점만 고쳐줘.";
   try {
-    const res = await fetch("/api/chat/stream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: prompt,
-        history: [],
-        page_type: state.selectedType,
-        template: state.selectedTemplate,
-        design_content: state.selectedDesignContent,
-        current_html: state.generatedHtml.slice(0, 20000),
-        element_context: "",
-        is_new_page: false,
-      }),
-    });
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let fullContent = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      fullContent += decoder.decode(value);
-    }
-    const extracted = extractHtmlMarker(fullContent) || extractHtml(fullContent);
-    if (extracted) {
-      state.generatedHtml = extracted;
-      updatePreview(state.generatedHtml, false);
-      saveProject();
-      assistantDiv.innerHTML = "\u2705 \uc218\uc815 \uc644\ub8cc!";
-    } else {
-      assistantDiv.innerHTML = "\u26a0\ufe0f HTML\uc744 \ucd94\ucd9c\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.";
-    }
+    state.isGenerating = true;
+    await sendMessageV2(msg, msg, null, "edit");
   } catch (e) {
-    assistantDiv.innerHTML = `\u26a0\ufe0f \uc624\ub958: ${e.message}`;
+    addMessage("messages", "assistant", "⚠️ 오류: " + e.message);
+  } finally {
+    state.isGenerating = false;
+    if (btn) btn.disabled = false;
+    if (typeof closeReview === "function") closeReview();
   }
-  if (btn) btn.disabled = false;
 }
 
 // ── Init ──
