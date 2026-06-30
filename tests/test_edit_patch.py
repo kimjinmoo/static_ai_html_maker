@@ -94,3 +94,25 @@ def test_diff_empty_when_no_html(monkeypatch):
     monkeypatch.setattr(er, "llama_chat", lambda messages: "x")
     c = __import__("app", fromlist=["create_app"]).create_app().test_client()
     assert c.post("/api/edit/diff", json={"message": "수정"}).get_json()["blocks"] == []
+
+
+def test_intent_ask(monkeypatch):
+    monkeypatch.setattr(er, "llama_chat", lambda m: '{"action":"ask","scope":"page","op":"none"}')
+    c = __import__("app", fromlist=["create_app"]).create_app().test_client()
+    assert c.post("/api/intent", json={"message": "이 색 어때?", "has_html": True}).get_json()["action"] == "ask"
+
+
+def test_intent_element_text(monkeypatch):
+    monkeypatch.setattr(er, "llama_chat", lambda m: '{"action":"edit","scope":"element","op":"text","value":"자전거 여행"}')
+    c = __import__("app", fromlist=["create_app"]).create_app().test_client()
+    b = c.post("/api/intent", json={"message": "자전거 여행으로 바꿔줘", "has_element": True, "has_html": True,
+                                    "element": {"tag": "h1", "text": "옛 제목"}}).get_json()
+    assert b["action"] == "edit" and b["scope"] == "element" and b["op"] == "text"
+    assert b["value"] == "자전거 여행"
+
+
+def test_intent_invalid_defaults(monkeypatch):
+    monkeypatch.setattr(er, "llama_chat", lambda m: 'garbage no json')
+    c = __import__("app", fromlist=["create_app"]).create_app().test_client()
+    b = c.post("/api/intent", json={"message": "음", "has_html": True}).get_json()
+    assert b["action"] == "edit" and b["scope"] == "page"

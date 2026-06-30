@@ -93,6 +93,93 @@ def _design_section(data):
         return SCAFFOLD_CLASS_REFERENCE
 
 
+INTENT_SYSTEM = ("You analyze a user's website-editing request and output ONLY a structured "
+                 "JSON intent. No prose, no markdown.")
+
+INTENT_ACTIONS = ("ask", "generate", "edit", "delete", "new_page")
+INTENT_SCOPES = ("element", "page", "site")
+INTENT_OPS = ("text", "style", "href", "src", "html", "none")
+
+
+def _build_intent_prompt(message, has_element, has_html, el):
+    el_info = "없음"
+    if has_element and el:
+        el_info = f"태그={el.get('tag','')}, 현재텍스트=\"{(el.get('text') or '')[:120]}\""
+    return f"""사용자의 홈페이지 편집 요청을 구조화된 의도(JSON)로 변환하세요.
+
+## 컨텍스트
+- 요소 선택됨: {"예" if has_element else "아니오"}
+- 현재 페이지 존재: {"예" if has_html else "아니오"}
+- 선택된 요소: {el_info}
+
+## 사용자 요청
+"{message}"
+
+## 출력 (오직 JSON, 다른 텍스트 금지)
+{{"action":"ask|generate|edit|delete|new_page","scope":"element|page|site","op":"text|style|href|src|html|none","value":"","styles":{{}},"reason":""}}
+
+## 규칙
+- 질문/상담/의견 요청("어때?","추천","어떻게 생각") → action="ask".
+- 현재 페이지가 없고 만들기 요청 → action="generate".
+- 현재 페이지가 있고 "새 페이지/하위 페이지" 요청 → action="new_page".
+- 선택된 요소가 있고 그 요소를 바꾸는 요청 → scope="element":
+  - 텍스트 변경 → op="text", value=새 텍스트(요청에서 추출).
+  - 색/배경/크기/둥글기/그림자 등 → op="style", styles={{"css속성":"값"}}.
+  - 링크 변경 → op="href", value=URL/경로. / 이미지 변경 → op="src", value=URL.
+  - 내부 구조/디자인 재작성 → op="html". / 삭제 → action="delete".
+- 선택 요소 없이 현재 페이지 일부(섹션/문구) 추가·수정·삭제 → action="edit"/"delete", scope="page", op="none".
+- "전체/사이트 전부 다시/싹 다" → scope="site".
+- value는 사용자가 의도한 **새 값**만. 추출 못 하면 빈 문자열.
+JSON만 출력."""
+
+
+def _parse_intent(raw):
+    raw = strip_thinking(raw or "").strip()
+    a = raw.find("{")
+    b = raw.rfind("}")
+    if a == -1 or b <= a:
+        return {"action": "edit", "scope": "page", "op": "none"}
+    try:
+        obj = json.loads(raw[a:b + 1])
+    except Exception:
+        return {"action": "edit", "scope": "page", "op": "none"}
+    action = (obj.get("action") or "edit").lower().strip()
+    if action not in INTENT_ACTIONS:
+        action = "edit"
+    scope = (obj.get("scope") or "page").lower().strip()
+    if scope not in INTENT_SCOPES:
+        scope = "page"
+    op = (obj.get("op") or "none").lower().strip()
+    if op not in INTENT_OPS:
+        op = "none"
+    return {
+        "action": action, "scope": scope, "op": op,
+        "value": obj.get("value", "") or "",
+        "styles": obj.get("styles", {}) or {},
+        "reason": obj.get("reason", "") or "",
+    }
+
+
+@edit_bp.route("/api/intent", methods=["POST"])
+def intent():
+    data = request.json or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"action": "ask", "scope": "page", "op": "none"})
+    has_element = bool(data.get("has_element"))
+    has_html = bool(data.get("has_html"))
+    el = data.get("element") or {}
+    try:
+        raw = llama_chat([
+            {"role": "system", "content": INTENT_SYSTEM},
+            {"role": "user", "content": _build_intent_prompt(message, has_element, has_html, el)},
+        ])
+        return jsonify(_parse_intent(raw))
+    except Exception as e:
+        print(f"[Intent] error: {e}", flush=True)
+        return jsonify({"action": "edit", "scope": "page", "op": "none"})
+
+
 DIFF_SYSTEM = ("You edit HTML by emitting SEARCH/REPLACE blocks only. "
                "Never rewrite the whole document. Output only the blocks, no prose.")
 
