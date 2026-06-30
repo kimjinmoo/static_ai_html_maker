@@ -74,3 +74,23 @@ def test_force_html_prompt(monkeypatch):
     body = c.post("/api/edit/patch", json={"message": "복잡", "element": {"tag": "div", "html": "<div>y</div>"}, "force_html": True}).get_json()
     assert body["op"] == "html"
     assert '반드시 op="html"' in captured["user"]
+
+
+def test_diff_parses_blocks(monkeypatch):
+    reply = (
+        "<<<<<<< SEARCH\n<h1>Old</h1>\n=======\n<h1>New</h1>\n>>>>>>> REPLACE\n"
+        "<<<<<<< SEARCH\n<p>x</p>\n=======\n>>>>>>> REPLACE\n"
+    )
+    monkeypatch.setattr(er, "llama_chat", lambda messages: reply)
+    c = __import__("app", fromlist=["create_app"]).create_app().test_client()
+    body = c.post("/api/edit/diff", json={"message": "제목 바꾸고 문단 삭제", "html": "<h1>Old</h1><p>x</p>"}).get_json()
+    assert len(body["blocks"]) == 2
+    assert body["blocks"][0]["search"] == "<h1>Old</h1>"
+    assert body["blocks"][0]["replace"] == "<h1>New</h1>"
+    assert body["blocks"][1]["replace"] == ""  # 삭제
+
+
+def test_diff_empty_when_no_html(monkeypatch):
+    monkeypatch.setattr(er, "llama_chat", lambda messages: "x")
+    c = __import__("app", fromlist=["create_app"]).create_app().test_client()
+    assert c.post("/api/edit/diff", json={"message": "수정"}).get_json()["blocks"] == []

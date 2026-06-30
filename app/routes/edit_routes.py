@@ -93,6 +93,71 @@ def _design_section(data):
         return SCAFFOLD_CLASS_REFERENCE
 
 
+DIFF_SYSTEM = ("You edit HTML by emitting SEARCH/REPLACE blocks only. "
+               "Never rewrite the whole document. Output only the blocks, no prose.")
+
+
+def _build_diff_prompt(message, html, design_section):
+    return f"""현재 HTML을 사용자 요청대로 수정하세요. **변경되는 부분만** SEARCH/REPLACE 블록으로 출력하세요. 전체 HTML 재작성 절대 금지.
+
+## 출력 형식 (이것만, 다른 텍스트·설명 금지)
+<<<<<<< SEARCH
+(현재 HTML에서 그대로 복사한 기존 코드 — 공백/들여쓰기까지 정확히 일치)
+=======
+(교체할 새 코드)
+>>>>>>> REPLACE
+
+- 여러 곳 변경 시 블록을 여러 개 출력하세요.
+- **삭제**: REPLACE 부분을 비우세요(아무것도 안 씀).
+- **추가**: 적절한 앵커(예: 특정 섹션의 닫는 태그 `</section>`)를 SEARCH로 잡고, REPLACE에 그 앵커 + 새 코드를 함께 넣어 삽입하세요.
+
+## 규칙
+- SEARCH 스니펫은 현재 HTML에 **정확히 1번만** 나타나도록 충분한 앞뒤 맥락을 포함하세요.
+- 기존 디자인/클래스/구조를 최대한 유지하세요.
+- 마크다운 코드펜스(```) 금지. 오직 블록만.
+
+## 디자인 참고
+{(design_section or '')[:1200]}
+
+## 현재 HTML
+{html}
+
+## 사용자 요청
+{message}"""
+
+
+def _parse_diff_blocks(raw):
+    import re
+    blocks = []
+    pattern = re.compile(
+        r"<<<<<<<\s*SEARCH\s*\n(.*?)\n?=======\s*\n(.*?)\n?>>>>>>>\s*REPLACE",
+        re.DOTALL,
+    )
+    for m in pattern.finditer(raw or ""):
+        blocks.append({"search": m.group(1), "replace": m.group(2)})
+    return blocks
+
+
+@edit_bp.route("/api/edit/diff", methods=["POST"])
+def edit_diff():
+    data = request.json or {}
+    message = (data.get("message") or "").strip()
+    html = data.get("html") or ""
+    if not message or not html:
+        return jsonify({"blocks": []})
+    try:
+        raw = llama_chat([
+            {"role": "system", "content": DIFF_SYSTEM},
+            {"role": "user", "content": _build_diff_prompt(message, html, _design_section(data))},
+        ])
+        # strip_thinking은 '=======' 구분선을 노이즈로 제거하므로 적용하지 않는다.
+        # 블록 마커는 추론 텍스트와 겹치지 않아 raw에서 바로 파싱한다.
+        return jsonify({"blocks": _parse_diff_blocks(raw or "")})
+    except Exception as e:
+        print(f"[EditDiff] error: {e}", flush=True)
+        return jsonify({"blocks": []})
+
+
 @edit_bp.route("/api/edit/patch", methods=["POST"])
 def edit_patch():
     data = request.json or {}

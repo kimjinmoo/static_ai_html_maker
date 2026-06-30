@@ -1146,6 +1146,53 @@ async function tryFastEdit(message, elInfo) {
   return true;
 }
 
+// ── Diff 기반 소스 편집 (바이브코딩 방식: SEARCH/REPLACE 블록) ──
+function applyDiffBlocks(html, blocks) {
+  let out = html, applied = 0;
+  for (const b of blocks) {
+    if (b.search == null || b.search === "") continue;
+    const idx = out.indexOf(b.search);
+    if (idx === -1) return { ok: false, html, applied, failed: b.search.slice(0, 80) };
+    out = out.slice(0, idx) + (b.replace || "") + out.slice(idx + b.search.length);
+    applied++;
+  }
+  return { ok: applied > 0, html: out, applied };
+}
+
+async function tryDiffEdit(message) {
+  const cur = state.generatedHtml;
+  if (!cur) return false;
+  showGenerating(true);
+  if (el.generatingStatusText) el.generatingStatusText.textContent = "소스에서 변경 부분만 수정 중...";
+  let blocks = [];
+  try {
+    const r = await fetch("/api/edit/diff", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, html: cur, design_system: state.designSystem || null }),
+    });
+    blocks = (await r.json()).blocks || [];
+  } catch (e) { hideGenerating(); return false; }
+  if (!blocks.length) { hideGenerating(); return false; }
+  const res = applyDiffBlocks(cur, blocks);
+  hideGenerating();
+  if (!res.ok) return false; // SEARCH 미스 → 전체 재생성 폴백
+  state.generatedHtml = res.html;
+  updatePreview(res.html, false);
+  const path = state.currentViewPath || "index.html";
+  if (path !== "index.html") state.multiPageHtmls[path] = res.html;
+  if (state.currentProjectId) {
+    fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, content: res.html }),
+    }).then(() => loadFileTree(state.currentProjectId)).catch(() => {});
+  }
+  addMessage("messages", "assistant", `🛠 소스 수정 완료 (변경 ${res.applied}곳) — 변경 부분만 패치, 나머지 유지.`);
+  state.chatHistory.push({ role: "assistant", content: `소스 ${res.applied}곳 수정` });
+  saveProject();
+  enableReviewBtn();
+  return true;
+}
+
 // ── Main sendMessage ──
 async function sendMessage() {
   const input = el.userInput;
@@ -1256,6 +1303,23 @@ async function sendMessage() {
       addMessage("messages", "assistant", "⚠️ 선택한 요소만 수정하지 못했습니다. 표현을 바꿔 다시 시도하거나, 페이지 전체를 바꾸려면 요청에 '전체'를 포함해 주세요.");
     }
     return; // 요소 선택 시엔 전체 재생성하지 않음
+  }
+
+  // Diff 편집: 기존 페이지의 추가/수정/삭제는 변경 부분만 패치 (요소 미선택, 전체/질문/새페이지 아님)
+  const _editVerb = /추가|수정|삭제|바꿔|변경|고쳐|넣어|빼|제거|없애|교체|줄여|늘려|바꿔줘|수정해|추가해|삭제해/.test(message);
+  const _isQuestion = /\?|어때|어떻게\s*생각|추천|좋을까|괜찮|뭐가\s*나/.test(message);
+  const _isNewPage = (typeof detectMultiPage === "function" && detectMultiPage(message) === true) ||
+    /새\s*페이지|서브\s*페이지|페이지\s*추가|페이지\s*생성|하위\s*페이지/.test(message);
+  if (state.generatedHtml && !isFirstGeneration && !_wantsWhole && !_isQuestion && !_isNewPage && _editVerb) {
+    const handled = await tryDiffEdit(message);
+    if (handled) {
+      state.isGenerating = false;
+      el.sendBtn.disabled = false;
+      el.typingIndicator.classList.add("hidden");
+      scrollToBottom("messages");
+      return;
+    }
+    // diff 실패 → 전체 재생성으로 폴백
   }
 
   // 전체 편집/생성 (요소 미선택 또는 '전체' 명시)
