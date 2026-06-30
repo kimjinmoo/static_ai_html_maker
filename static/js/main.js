@@ -2671,3 +2671,58 @@ async function saveSettings() {
     }
   } catch (e) { _showSettingsResult(false, "저장 실패: " + e.message); }
 }
+
+// ── 백엔드 연동 상세 가이드 모달 ──
+const _BACKEND_GUIDES = {
+  ollama: {
+    title: "🦙 Ollama 연동 가이드",
+    link: "https://ollama.com/download",
+    body: `<p><b>Ollama</b>는 로컬/원격 PC에서 오픈소스 LLM을 HTTP로 제공합니다. GGUF 빌드 없이 가장 쉽게 쓸 수 있어요.</p>
+      <ol class="setting-guide-steps">
+        <li><b>설치</b>: <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a> 에서 OS에 맞게 설치 후 실행(백그라운드 상주).</li>
+        <li><b>모델 받기</b>(터미널): <code>ollama pull qwen2.5-coder:7b</code><br>다른 추천: <code>ollama pull llama3.1:8b</code>, <code>ollama pull gemma2:9b</code></li>
+        <li><b>주소</b>: 같은 PC면 <code>http://localhost:11434</code> 그대로. 다른 PC면 그 IP로(예: <code>http://192.168.0.10:11434</code>) + 그쪽에서 <code>OLLAMA_HOST=0.0.0.0</code> 설정.</li>
+        <li>설정에서 백엔드 <b>Ollama</b> 선택 → 주소·모델명 입력 → <b>🔌 연결 테스트</b>(설치된 모델 수 표시) → <b>💾 저장 및 적용</b>.</li>
+        <li>저장 즉시 적용됩니다(재시작 불필요).</li>
+      </ol>
+      <p style="color:var(--text-muted,#888);font-size:12px">⚠️ "연결 실패"면 Ollama가 실행 중인지, 주소/포트가 맞는지, 모델을 pull 했는지 확인하세요.</p>`,
+  },
+  gemini: {
+    title: "✨ Google Gemini 연동 가이드",
+    link: "https://aistudio.google.com/apikey",
+    body: `<p><b>Gemini</b>는 Google의 클라우드 LLM입니다. 설치 없이 API 키만으로 빠르고 품질 높게 생성할 수 있어요.</p>
+      <ol class="setting-guide-steps">
+        <li><b>API 키 발급</b>: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 접속 → 구글 로그인 → <b>Create API key</b> → 키 복사. (무료 등급 제공)</li>
+        <li>패키지 필요: <code>pip install google-genai</code> (앱 환경에 설치).</li>
+        <li>설정에서 백엔드 <b>Gemini</b> 선택 → <b>API 키</b> 붙여넣기.</li>
+        <li><b>모델</b>: <code>gemini-2.5-flash</code>(빠르고 저렴) 또는 <code>gemini-2.5-pro</code>(고품질).</li>
+        <li><b>🔌 연결 테스트</b> → <b>💾 저장 및 적용</b>. 키는 서버 settings.json에 저장(빈칸 저장 시 기존 키 유지).</li>
+      </ol>
+      <p style="color:var(--text-muted,#888);font-size:12px">⚠️ API 키는 외부에 노출하지 마세요. 사용량에 따라 과금될 수 있습니다.</p>`,
+  },
+  local: {
+    title: "💻 로컬 모델 (llama-cpp) 가이드",
+    link: "https://huggingface.co/models?library=gguf",
+    body: `<p><b>로컬 모델</b>은 인터넷 없이 내 PC에서 GGUF 모델을 직접 구동합니다. (llama-cpp-python 필요)</p>
+      <ol class="setting-guide-steps">
+        <li><b>GGUF 모델 준비</b>: <a href="https://huggingface.co/models?library=gguf" target="_blank" rel="noopener">HuggingFace</a>에서 <code>.gguf</code> 파일 다운로드(Q4_K_M 권장).</li>
+        <li><code>models/</code> 폴더에 넣으면 <b>자동 감지</b>, 또는 설정의 <b>모델 경로</b>에 직접 지정.</li>
+        <li>GPU 가속은 설치 시 빌드 필요: NVIDIA <code>CMAKE_ARGS="-DGGML_CUDA=on"</code>, AMD <code>-DGGML_VULKAN=on</code>.</li>
+        <li>Windows에서 빌드 실패가 잦으면 <b>Ollama나 Gemini를 권장</b>합니다.</li>
+        <li><b>🔌 연결 테스트</b>로 모델 파일 인식 확인 → <b>💾 저장 및 적용</b>.</li>
+      </ol>
+      <p style="color:var(--text-muted,#888);font-size:12px">💡 첫 실행 시 모델이 없으면 다운로드 모달에서 기본 모델을 받을 수 있습니다.</p>`,
+  },
+};
+function showBackendGuide(which) {
+  const g = _BACKEND_GUIDES[which]; if (!g) return;
+  const modal = document.getElementById("backend-guide-modal"); if (!modal) return;
+  document.getElementById("guide-title").textContent = g.title;
+  document.getElementById("guide-body").innerHTML = g.body;
+  const lk = document.getElementById("guide-link"); if (lk) lk.href = g.link;
+  modal.classList.remove("hidden");
+}
+function closeBackendGuide() {
+  const modal = document.getElementById("backend-guide-modal");
+  if (modal) modal.classList.add("hidden");
+}

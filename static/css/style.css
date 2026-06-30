@@ -2631,3 +2631,18 @@ body {
   margin: 4px 4px 4px 0;
 }
 .btn-choice:hover { background: var(--accent-hover, #818cf8); }
+
+/* 사이드바 AI 설정 버튼 */
+.btn-sidebar-settings {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 9px 12px;
+  background: var(--bg-tertiary, #252525);
+  color: var(--text-primary, #e8e8e8);
+  border: 1px solid var(--border, #2a2a2a);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: left;
+}
+.btn-sidebar-settings:hover { border-color: var(--accent, #6366f1); background: var(--bg-hover, #2a2a2a); }
