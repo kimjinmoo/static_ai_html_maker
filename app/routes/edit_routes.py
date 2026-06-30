@@ -20,8 +20,9 @@ PATCH_SYSTEM = ("You convert an edit request on ONE selected HTML element into a
 VALID_OPS = ("text", "delete", "style", "href", "src", "html")
 
 
-def _build_prompt(message, el, design_section="", force_html=False):
+def _build_prompt(message, el, design_section="", force_html=False, image_url=""):
     design_block = f"\n## 디자인 일관성 참고 (op=html 시 동일 디자인 유지)\n{design_section}\n" if design_section else ""
+    img_block = f"\n## 첨부 이미지 URL\n{image_url}\n(이미지 변경이면 op=\"src\" value=이 URL. op=\"html\"이면 <img src=\"{image_url}\">로 사용.)\n" if image_url else ""
     if force_html:
         return f"""선택된 HTML 요소 **하나만** 다시 작성하세요. 페이지의 다른 부분은 절대 포함하지 마세요.
 
@@ -29,7 +30,7 @@ def _build_prompt(message, el, design_section="", force_html=False):
 - 태그: {el.get('tag', '')}
 - 현재 텍스트: {(el.get('text') or '')[:200]}
 - 현재 HTML: {(el.get('html') or '')[:800]}
-{design_block}
+{design_block}{img_block}
 ## 사용자 요청
 "{message}"
 
@@ -46,7 +47,7 @@ def _build_prompt(message, el, design_section="", force_html=False):
 - 태그: {el.get('tag', '')}
 - 현재 텍스트: {(el.get('text') or '')[:200]}
 - 현재 HTML: {(el.get('html') or '')[:800]}
-{design_block}
+{design_block}{img_block}
 ## 사용자 요청
 "{message}"
 
@@ -101,16 +102,17 @@ INTENT_SCOPES = ("element", "page", "site")
 INTENT_OPS = ("text", "style", "href", "src", "html", "none")
 
 
-def _build_intent_prompt(message, has_element, has_html, el):
+def _build_intent_prompt(message, has_element, has_html, el, image_url=""):
     el_info = "없음"
     if has_element and el:
         el_info = f"태그={el.get('tag','')}, 현재텍스트=\"{(el.get('text') or '')[:120]}\""
+    img_line = f"\n- 첨부 이미지 URL: {image_url} (이미지 변경/삽입 요청이면 op=\"src\", value=이 URL 사용)" if image_url else ""
     return f"""사용자의 홈페이지 편집 요청을 구조화된 의도(JSON)로 변환하세요.
 
 ## 컨텍스트
 - 요소 선택됨: {"예" if has_element else "아니오"}
 - 현재 페이지 존재: {"예" if has_html else "아니오"}
-- 선택된 요소: {el_info}
+- 선택된 요소: {el_info}{img_line}
 
 ## 사용자 요청
 "{message}"
@@ -170,10 +172,11 @@ def intent():
     has_element = bool(data.get("has_element"))
     has_html = bool(data.get("has_html"))
     el = data.get("element") or {}
+    image_url = data.get("image_url") or ""
     try:
         raw = llama_chat([
             {"role": "system", "content": INTENT_SYSTEM},
-            {"role": "user", "content": _build_intent_prompt(message, has_element, has_html, el)},
+            {"role": "user", "content": _build_intent_prompt(message, has_element, has_html, el, image_url)},
         ])
         return jsonify(_parse_intent(raw))
     except Exception as e:
@@ -185,8 +188,10 @@ DIFF_SYSTEM = ("You edit HTML by emitting SEARCH/REPLACE blocks only. "
                "Never rewrite the whole document. Output only the blocks, no prose.")
 
 
-def _build_diff_prompt(message, html, design_section):
+def _build_diff_prompt(message, html, design_section, image_url=""):
+    img_block = f"\n## 첨부 이미지 URL\n{image_url}\n(이미지 삽입/변경 요청이면 <img src=\"{image_url}\"> 형태로 이 URL을 사용하세요.)\n" if image_url else ""
     return f"""현재 HTML을 사용자 요청대로 수정하세요. **변경되는 부분만** SEARCH/REPLACE 블록으로 출력하세요. 전체 HTML 재작성 절대 금지.
+{img_block}
 
 ## 출력 형식 (이것만, 다른 텍스트·설명 금지)
 <<<<<<< SEARCH
@@ -236,7 +241,7 @@ def edit_diff():
     try:
         raw = llama_chat([
             {"role": "system", "content": DIFF_SYSTEM},
-            {"role": "user", "content": _build_diff_prompt(message, html, _design_section(data))},
+            {"role": "user", "content": _build_diff_prompt(message, html, _design_section(data), data.get("image_url") or "")},
         ])
         # strip_thinking은 '=======' 구분선을 노이즈로 제거하므로 적용하지 않는다.
         # 블록 마커는 추론 텍스트와 겹치지 않아 raw에서 바로 파싱한다.
@@ -254,10 +259,11 @@ def edit_patch():
     if not message or not el:
         return jsonify({"op": "complex"})
     force_html = bool(data.get("force_html"))
+    image_url = data.get("image_url") or ""
     try:
         raw = llama_chat([
             {"role": "system", "content": PATCH_SYSTEM},
-            {"role": "user", "content": _build_prompt(message, el, _design_section(data), force_html)},
+            {"role": "user", "content": _build_prompt(message, el, _design_section(data), force_html, image_url)},
         ])
         return jsonify(_parse_patch(raw))
     except Exception as e:

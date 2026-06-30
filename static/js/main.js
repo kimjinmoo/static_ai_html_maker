@@ -1059,10 +1059,19 @@ function tryLocalPatch(message, elInfo) {
   const m = (message || "").trim();
   // 명백한 삭제만 즉시 처리
   if (/(삭제|제거|없애|지워|지우|delete|remove)/i.test(m) && !_DESIGN_WORDS.test(m)) return { op: "delete" };
-  // 따옴표로 새 텍스트를 명시한 경우만 즉시 처리 (그 외 텍스트 추출은 AI 의도분류에 위임)
+  // 따옴표로 새 텍스트를 명시한 경우 즉시 처리
   const q = m.match(/["'“「]([^"'”」]{1,200})["'”」]/);
   if (q && /(바꿔|변경|수정|교체|텍스트|글자|문구|내용|제목|로|으로)/.test(m) && !_DESIGN_WORDS.test(m)) {
     return { op: "text", text: q[1] };
+  }
+  // "...을/를 X (으)로 (text)? 수정/변경/바꿔" 또는 "X로 수정" → X (디자인 단어 없을 때)
+  if (!_DESIGN_WORDS.test(m)) {
+    let mm = m.match(/(?:을|를)\s*(.+?)\s*으?로\s*(?:text|텍스트|글자|문구|내용|제목)?\s*(?:수정|변경|바꿔|바꿔줘|교체)/i);
+    if (!mm) mm = m.match(/(?:^|\s)([^\s"']+(?:\s+[^\s"']+)?)\s*으?로\s*(?:text|텍스트|글자|문구|내용|제목)?\s*(?:수정|변경|바꿔|바꿔줘|교체)/i);
+    if (mm && mm[1]) {
+      const t = mm[1].trim().replace(/\s*으$/, "");
+      if (t && t.length <= 60 && !/wgen-/.test(t)) return { op: "text", text: t };
+    }
   }
   // HEX 색상
   const hex = m.match(/#([0-9a-fA-F]{3,8})\b/);
@@ -1111,13 +1120,13 @@ function applyPatchToPreview(patch, wgenId) {
 
 const _PATCH_LABEL = { delete: "요소 삭제", text: "텍스트 변경", style: "스타일 변경", href: "링크 변경", src: "이미지 변경", html: "요소 디자인 변경" };
 
-async function tryFastEdit(message, elInfo) {
+async function tryFastEdit(message, elInfo, imageUrl) {
   let patch = tryLocalPatch(message, elInfo);
   if (!patch) {
     try {
       const r = await fetch("/api/edit/patch", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, element: elInfo, design_system: state.designSystem || null }),
+        body: JSON.stringify({ message, element: elInfo, design_system: state.designSystem || null, image_url: imageUrl || "" }),
       });
       patch = await r.json();
     } catch (e) { return false; }
@@ -1127,7 +1136,7 @@ async function tryFastEdit(message, elInfo) {
     try {
       const r2 = await fetch("/api/edit/patch", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, element: elInfo, design_system: state.designSystem || null, force_html: true }),
+        body: JSON.stringify({ message, element: elInfo, design_system: state.designSystem || null, force_html: true, image_url: imageUrl || "" }),
       });
       patch = await r2.json();
     } catch (e) { /* keep complex */ }
@@ -1155,17 +1164,26 @@ async function execElementPatch(patch, elInfo) {
 
 // AI 의도 분류 기반 라우팅 — 채팅 문장을 AI가 이해해 결정적으로 분기한다.
 async function routeByIntent(message, displayMessage, elInfo) {
+  const _lastImg = state.uploadedImages.length ? state.uploadedImages[state.uploadedImages.length - 1] : null;
+  const _imgUrl = _lastImg ? _lastImg.url : "";
+
+  // 0) 업로드 이미지 + 선택 요소 + 이미지 의도 → src 즉시 교체 (요소가 img거나 img 포함)
+  if (elInfo && _imgUrl && /이미지|사진|그림|image|img/i.test(message)) {
+    const isImgEl = (elInfo.tag === "img") || /<img/i.test(elInfo.html || "");
+    if (isImgEl) { console.log("[intent] image src fast-patch", _imgUrl); await execElementPatch({ op: "src", src: _imgUrl }, elInfo); clearUploadedImages(); return; }
+  }
+
   // 1) 고신뢰 휴리스틱(선택 요소): 즉시 패치 (AI 호출 절약)
-  if (elInfo) {
+  if (elInfo && !_imgUrl) {
     const lp = tryLocalPatch(message, elInfo);
     if (lp) { console.log("[intent] local fast-patch", JSON.stringify(lp)); await execElementPatch(lp, elInfo); return; }
   }
-  // 2) AI 의도 분류
+  // 2) AI 의도 분류 (첨부 이미지 URL 포함)
   let intent;
   try {
     const r = await fetch("/api/intent", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, has_element: !!elInfo, has_html: !!state.generatedHtml, element: elInfo || null }),
+      body: JSON.stringify({ message, has_element: !!elInfo, has_html: !!state.generatedHtml, element: elInfo || null, image_url: _imgUrl }),
     });
     intent = await r.json();
   } catch (e) { intent = { action: "edit", scope: elInfo ? "element" : "page", op: "none" }; }
@@ -1184,15 +1202,16 @@ async function routeByIntent(message, displayMessage, elInfo) {
     else if (intent.op === "text" && intent.value && !_badVal) patch = { op: "text", text: intent.value };
     else if (intent.op === "style" && intent.styles) patch = { op: "style", styles: intent.styles };
     else if (intent.op === "href" && intent.value) patch = { op: "href", href: intent.value };
-    else if (intent.op === "src" && intent.value) patch = { op: "src", src: intent.value };
-    if (patch) { await execElementPatch(patch, elInfo); return; }
-    // op=html/none 등 → 요소만 재작성(force_html) 시도, 실패해도 전체 재생성 안 함
-    await tryFastEdit(message, elInfo); return;
+    else if (intent.op === "src") patch = { op: "src", src: intent.value || _imgUrl };
+    if (patch) { await execElementPatch(patch, elInfo); if (_imgUrl) clearUploadedImages(); return; }
+    // op=html/none 등 → 요소만 재작성(force_html, 첨부 이미지 URL 전달) 시도
+    await tryFastEdit(message, elInfo, _imgUrl); if (_imgUrl) clearUploadedImages(); return;
   }
   // 사이트 전체 → 전체 편집
   if (intent.scope === "site") { await sendMessageV2(message, displayMessage, null, "edit"); return; }
-  // 페이지 일부 편집/삭제 → diff 소스 편집, 실패 시 전체 편집 폴백
-  const handled = await tryDiffEdit(message);
+  // 페이지 일부 편집/삭제 → diff 소스 편집(첨부 이미지 URL 전달), 실패 시 전체 편집 폴백
+  const handled = await tryDiffEdit(message, _imgUrl);
+  if (_imgUrl && handled) clearUploadedImages();
   if (!handled) await sendMessageV2(message, displayMessage, elInfo || null);
 }
 
@@ -1209,7 +1228,7 @@ function applyDiffBlocks(html, blocks) {
   return { ok: applied > 0, html: out, applied };
 }
 
-async function tryDiffEdit(message) {
+async function tryDiffEdit(message, imageUrl) {
   const cur = state.generatedHtml;
   if (!cur) return false;
   showGenerating(true);
@@ -1218,7 +1237,7 @@ async function tryDiffEdit(message) {
   try {
     const r = await fetch("/api/edit/diff", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, html: cur, design_system: state.designSystem || null }),
+      body: JSON.stringify({ message, html: cur, design_system: state.designSystem || null, image_url: imageUrl || "" }),
     });
     blocks = (await r.json()).blocks || [];
   } catch (e) { hideGenerating(); return false; }
