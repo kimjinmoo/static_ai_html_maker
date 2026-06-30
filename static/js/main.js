@@ -622,6 +622,16 @@ function updatePreview(html, isStreaming) {
     if (!isStreaming) showPreviewError("생성된 HTML이 비어 있습니다. 다시 시도해 주세요.");
     return;
   }
+  // 브라우저 파서로 정규화 — 안 닫힌/어긋난 div 등 깨진 HTML을 유효 DOM으로 재구성
+  // (스트리밍 중에는 부분 HTML이라 건너뜀)
+  if (!isStreaming) {
+    try {
+      const doc = new DOMParser().parseFromString(processed, "text/html");
+      if (doc && doc.body && (doc.body.children.length > 0 || doc.body.textContent.trim())) {
+        processed = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+      }
+    } catch (e) { /* 파싱 실패 시 원본 사용 */ }
+  }
   // 미리보기 신뢰성: data-animate(opacity:0)가 JS 실패로 영구 숨김되어 흰 화면이
   // 되지 않도록 CSS로 강제 표시 (스크립트 주입과 별개로 항상 보이게)
   const revealStyle = '<style id="wgen-reveal">[data-animate]{opacity:1 !important;transform:none !important}</style>';
