@@ -512,9 +512,14 @@ function showWelcomeMessage() {
 
 // ── Image Upload ──
 function handleImageUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (!state.currentProjectId) { addMessage("messages", "assistant", "\u26a0\ufe0f \uba3c\uc800 \ud504\ub85c\uc81d\ud2b8\ub97c \uc2dc\uc791\ud574\uc8fc\uc138\uc694."); return; }
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+  if (!state.currentProjectId) { addMessage("messages", "assistant", "\u26a0\ufe0f \uba3c\uc800 \ud504\ub85c\uc81d\ud2b8\ub97c \uc2dc\uc791\ud574\uc8fc\uc138\uc694."); event.target.value = ""; return; }
+  files.forEach(uploadOneImage);
+  event.target.value = "";
+}
+
+function uploadOneImage(file) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const previewHtml = `<div class="image-attach-preview"><img src="${e.target.result}" alt="\ucca8\ubd80 \uc774\ubbf8\uc9c0" class="image-attach-thumb" /><span class="image-attach-name">${file.name}</span><span class="image-attach-status">\u23f3 \uc5c5\ub85c\ub4dc \uc911...</span></div>`;
@@ -532,13 +537,18 @@ function handleImageUpload(event) {
           const imgEl = msgEl.querySelector(".image-attach-thumb");
           if (imgEl) imgEl.src = data.url;
           loadFileTree(state.currentProjectId);
-          el.userInput.placeholder = "\uc774\ubbf8\uc9c0\uac00 \ucca8\ubd80\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \uc774 \uc774\ubbf8\uc9c0\ub97c \uc5b4\ub5bb\uac8c \uc0ac\uc6a9\ud560\uc9c0 \uc785\ub825\ud558\uc138\uc694...";
+          el.userInput.placeholder = `\uc774\ubbf8\uc9c0 ${state.uploadedImages.length}\uac1c \ucca8\ubd80\ub428. "\uac24\ub7ec\ub9ac \ucd94\uac00" \ub610\ub294 \uc694\uc18c \uc120\ud0dd \ud6c4 "\uc774 \uc774\ubbf8\uc9c0\ub85c \ubc14\uafd4"...`;
           el.userInput.focus();
+        } else {
+          const st = msgEl.querySelector(".image-attach-status");
+          if (st) { st.textContent = "\u26a0\ufe0f \uc5c5\ub85c\ub4dc \uc2e4\ud328"; st.style.color = "var(--error, #e74c3c)"; }
         }
-      }).catch(() => { });
+      }).catch(() => {
+        const st = msgEl.querySelector(".image-attach-status");
+        if (st) { st.textContent = "\u26a0\ufe0f \uc5c5\ub85c\ub4dc \uc2e4\ud328"; st.style.color = "var(--error, #e74c3c)"; }
+      });
   };
   reader.readAsDataURL(file);
-  event.target.value = "";
 }
 
 function getImageContext() {
