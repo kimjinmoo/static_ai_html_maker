@@ -1158,9 +1158,19 @@ function buildElementToInsert(message, imgUrl) {
     return `<div style="${_IMG_PH};max-width:320px">이미지</div>`;
   }
   if (/버튼|버틀|button|링크/i.test(message)) return `<a href="javascript:void(0)" class="btn btn-primary">버튼</a>`;
+  return `<p>${_extractInsertText(message)}</p>`;
+}
+
+// 추가 요청에서 새 텍스트만 추출 (방향/액션/타입 단어 제거)
+function _extractInsertText(message) {
   const q = message.match(/["'“「]([^"'”」]{1,200})["'”」]/);
-  const txt = q ? q[1] : "새 텍스트";
-  return `<p>${txt}</p>`;
+  if (q) return q[1].trim();
+  let m = " " + message + " ";
+  m = m.replace(/(맨\s*)?(위에|아래에|위쪽|아래쪽|왼쪽에|오른쪽에|왼쪽|오른쪽|좌측|우측|상단|하단|앞에|뒤에|여기에|이\s*위치에)/g, " ");
+  m = m.replace(/(텍스트|글자|문구|문단|단락|text)/gi, " ");
+  m = m.replace(/(추가해줘|추가해|추가|넣어줘|넣어|삽입해줘|삽입해|삽입|붙여넣어|붙여|만들어줘|만들어|작성해줘|작성|써줘|해줘|해)/g, " ");
+  m = m.replace(/\s+/g, " ").trim();
+  return m || "새 텍스트";
 }
 function _insertPosition(message) {
   return /(위|앞|왼쪽|좌측|상단|above|before|left)/i.test(message) ? "before" : "after";
