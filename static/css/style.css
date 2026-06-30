@@ -2580,15 +2580,33 @@ body {
 /* 생성 진행상황 모달 — preview-generating을 모달 안에서 정상 배치 */
 .generating-modal-content {
   width: min(480px, 92vw);
+  /* 높이를 고정해 스트리밍 중 내용 변화로 모달이 위아래로 흔들리지 않게 */
+  height: 420px;
+  max-height: 82vh;
   padding: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .generating-modal-content .preview-generating {
   position: static;
   inset: auto;
   background: transparent;
   padding: 28px 24px;
-  max-height: 78vh;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* todo 리스트만 내부 스크롤 → 항목이 늘어도 모달 높이 불변 */
+.generating-modal-content .generating-progress-list {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 8px 0;
 }
 
 /* 생성 모달 — 진행률 + 속도 메타 */
