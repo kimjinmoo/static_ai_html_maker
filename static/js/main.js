@@ -579,7 +579,7 @@ var devMode=${state.devMode};
 var sty=document.getElementById("wgen-style")||function(){var s=document.createElement("style");s.id="wgen-style";s.textContent="img{max-width:100%;height:auto}body.wgen-devmode{cursor:crosshair!important}body.wgen-devmode .wgen-selected{outline:3px solid #6c5ce7!important;outline-offset:2px;cursor:pointer!important}body.wgen-devmode .wgen-hover{outline:2px dashed #00cec9!important;outline-offset:1px;cursor:pointer!important}";document.head.appendChild(s);return s}();
 function applyDevMode(v){var b=document.body;if(b)b.classList.toggle("wgen-devmode",v)};
 var _dm=devMode;applyDevMode(_dm);if(!document.body)document.addEventListener("DOMContentLoaded",function(){applyDevMode(_dm)});
-window.addEventListener("message",function(e){if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;applyDevMode(devMode);if(!devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}}else if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}else if(e.data&&e.data.type==="wgen-apply-patch"){var _p=e.data.patch||{},_wid=e.data.wgenId,_n=_wid?document.querySelector('[data-wgen-id="'+_wid+'"]'):null;if(!_n)_n=el;var _ok=false;if(_n){try{if(_p.op==="delete"){_n.remove();_ok=true}else if(_p.op==="text"){if(_p.text!=null){_n.textContent=_p.text;_ok=true}}else if(_p.op==="href"){_n.setAttribute("href",_p.href||"#");_ok=true}else if(_p.op==="src"){var _im=_n.tagName==="IMG"?_n:_n.querySelector("img");if(_im){_im.setAttribute("src",_p.src||"");_ok=true}}else if(_p.op==="style"){var _st=_p.styles||{};for(var _k in _st){_n.style.setProperty(_k,_st[_k])}_ok=true}else if(_p.op==="html"){if(_p.html){_n.outerHTML=_p.html;_ok=true}}}catch(_er){_ok=false}}var _html="";try{var _root=document.documentElement.cloneNode(true);_root.querySelectorAll("#wgen-interaction,#wgen-error-catcher,#wgen-style").forEach(function(x){x.remove()});_root.querySelectorAll("[data-wgen-id]").forEach(function(x){x.removeAttribute("data-wgen-id")});_root.querySelectorAll(".wgen-hover,.wgen-selected").forEach(function(x){x.classList.remove("wgen-hover");x.classList.remove("wgen-selected")});var _b=_root.querySelector("body");if(_b)_b.classList.remove("wgen-devmode");_html="<!DOCTYPE html>\\n"+_root.outerHTML}catch(_e2){_html=""}window.parent.postMessage({type:"wgen-patched",ok:_ok&&!!_html,html:_html},"*")}});
+window.addEventListener("message",function(e){if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;applyDevMode(devMode);if(!devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}}else if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}else if(e.data&&e.data.type==="wgen-apply-patch"){var _p=e.data.patch||{},_wid=e.data.wgenId,_n=_wid?document.querySelector('[data-wgen-id="'+_wid+'"]'):null;if(!_n)_n=el;var _ok=false;if(_n){try{if(_p.op==="delete"){_n.remove();_ok=true}else if(_p.op==="text"){if(_p.text!=null){_n.textContent=_p.text;_ok=true}}else if(_p.op==="href"){_n.setAttribute("href",_p.href||"#");_ok=true}else if(_p.op==="src"){var _im=_n.tagName==="IMG"?_n:_n.querySelector("img");if(_im){_im.setAttribute("src",_p.src||"");_ok=true}}else if(_p.op==="style"){var _st=_p.styles||{};for(var _k in _st){_n.style.setProperty(_k,_st[_k])}_ok=true}else if(_p.op==="html"){if(_p.html){_n.outerHTML=_p.html;_ok=true}}else if(_p.op==="insert"){if(_p.html){_n.insertAdjacentHTML(_p.position==="before"?"beforebegin":"afterend",_p.html);_ok=true}}}catch(_er){_ok=false}}var _html="";try{var _root=document.documentElement.cloneNode(true);_root.querySelectorAll("#wgen-interaction,#wgen-error-catcher,#wgen-style").forEach(function(x){x.remove()});_root.querySelectorAll("[data-wgen-id]").forEach(function(x){x.removeAttribute("data-wgen-id")});_root.querySelectorAll(".wgen-hover,.wgen-selected").forEach(function(x){x.classList.remove("wgen-hover");x.classList.remove("wgen-selected")});var _b=_root.querySelector("body");if(_b)_b.classList.remove("wgen-devmode");_html="<!DOCTYPE html>\\n"+_root.outerHTML}catch(_e2){_html=""}window.parent.postMessage({type:"wgen-patched",ok:_ok&&!!_html,html:_html},"*")}});
 document.addEventListener("mouseover",function(e){if(!devMode||e.target.tagName==="BODY"||e.target.tagName==="HTML"||el===e.target)return;document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});e.target.classList.add("wgen-hover")});
 document.addEventListener("mouseout",function(e){if(!devMode)return;if(el!==e.target)e.target.classList.remove("wgen-hover")});
 document.addEventListener("click",function(e){if(e.button!==0)return;var l=e.target.closest("a");if(l){var h=l.getAttribute("data-nav")||l.getAttribute("href");if(!h||h===""||h.startsWith("javascript:")){e.preventDefault();return}e.preventDefault();e.stopPropagation();if(devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===l){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=l;l.classList.remove("wgen-hover");l.classList.add("wgen-selected")}window.parent.postMessage({type:"preview-link-clicked",href:h,text:(l.innerText||"").substring(0,100).trim(),tag:"a",classes:(l.className||"").toString().trim()},"*");return}if(!devMode)return;e.stopPropagation();if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===e.target){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=e.target;e.target.classList.add("wgen-selected");if(!e.target.getAttribute("data-wgen-id")){e.target.setAttribute("data-wgen-id","w"+Math.random().toString(36).slice(2,8))}var _wid=e.target.getAttribute("data-wgen-id");var _cl=(e.target.className||"").toString().replace(/\\bwgen-(hover|selected|devmode)\\b/g,"").replace(/\\s+/g," ").trim();var _oh=e.target.outerHTML.replace(/\\sdata-wgen-id="[^"]*"/g,"").replace(/\\bwgen-(hover|selected|devmode)\\b/g,"").replace(/class="\\s*"/g,"").substring(0,800);window.parent.postMessage({type:"element-selected",wgen_id:_wid,tag:e.target.tagName.toLowerCase(),id:e.target.id||"",classes:_cl,text:(e.target.innerText||"").substring(0,100).trim(),html:_oh},"*")});
@@ -1120,7 +1120,22 @@ function applyPatchToPreview(patch, wgenId) {
   });
 }
 
-const _PATCH_LABEL = { delete: "요소 삭제", text: "텍스트 변경", style: "스타일 변경", href: "링크 변경", src: "이미지 변경", html: "요소 디자인 변경" };
+const _PATCH_LABEL = { delete: "요소 삭제", text: "텍스트 변경", style: "스타일 변경", href: "링크 변경", src: "이미지 변경", html: "요소 디자인 변경", insert: "요소 추가" };
+
+// 선택 요소 인접에 삽입할 새 요소 HTML 생성 (이미지/버튼/텍스트)
+function buildElementToInsert(message, imgUrl) {
+  if (/이미지|사진|그림|image|img/i.test(message)) {
+    if (imgUrl) return `<img src="${imgUrl}" alt="이미지" style="max-width:100%;height:auto;display:block;border-radius:8px" />`;
+    return `<div style="${_IMG_PH};max-width:320px">이미지</div>`;
+  }
+  if (/버튼|버틀|button|링크/i.test(message)) return `<a href="javascript:void(0)" class="btn btn-primary">버튼</a>`;
+  const q = message.match(/["'“「]([^"'”」]{1,200})["'”」]/);
+  const txt = q ? q[1] : "새 텍스트";
+  return `<p>${txt}</p>`;
+}
+function _insertPosition(message) {
+  return /(위|앞|왼쪽|좌측|상단|above|before|left)/i.test(message) ? "before" : "after";
+}
 
 async function tryFastEdit(message, elInfo, imageUrl) {
   let patch = tryLocalPatch(message, elInfo);
@@ -1323,6 +1338,15 @@ async function routeByIntent(message, displayMessage, elInfo) {
 
   // ── 요소 선택 시: '전체' 명시가 없으면 무조건 그 요소만 변경 (절대 전체 재생성/diff 안 함) ──
   if (elInfo && !_wantsWhole) {
+    // -1) "추가/넣어/삽입" + (이미지/텍스트/버튼) → 선택 요소 인접에 새 요소 삽입
+    if (/추가|넣어|넣어줘|삽입|붙여/i.test(message)) {
+      const pos = _insertPosition(message);
+      const insHtml = buildElementToInsert(message, _imgUrl);
+      console.log("[intent] element insert", pos);
+      await execElementPatch({ op: "insert", position: pos, html: insHtml }, elInfo);
+      if (_imgUrl) clearUploadedImages();
+      return;
+    }
     // 0) 업로드 이미지 + 이미지 의도 → src 즉시 교체
     if (_imgUrl && /이미지|사진|그림|image|img/i.test(message)) {
       const isImgEl = (elInfo.tag === "img") || /<img/i.test(elInfo.html || "");
