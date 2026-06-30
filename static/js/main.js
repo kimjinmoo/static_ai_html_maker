@@ -1162,6 +1162,68 @@ async function execElementPatch(patch, elInfo) {
   return true;
 }
 
+// 색 이름/HEX 파싱 (한국어+영어)
+const _COLOR_MAP = {
+  "흰": "#ffffff", "하양": "#ffffff", "하얀": "#ffffff", "화이트": "#ffffff", "white": "#ffffff",
+  "검정": "#111111", "검은": "#111111", "블랙": "#111111", "black": "#111111",
+  "빨강": "#e74c3c", "빨간": "#e74c3c", "red": "#e74c3c",
+  "주황": "#e67e22", "orange": "#e67e22",
+  "노랑": "#f1c40f", "노란": "#f1c40f", "yellow": "#f1c40f",
+  "초록": "#2ecc71", "녹색": "#2ecc71", "green": "#2ecc71",
+  "파랑": "#3498db", "파란": "#3498db", "blue": "#3498db", "하늘": "#74b9ff",
+  "남색": "#2c3e50", "네이비": "#2c3e50", "navy": "#2c3e50",
+  "보라": "#9b59b6", "purple": "#9b59b6",
+  "분홍": "#fd79a8", "핑크": "#fd79a8", "pink": "#fd79a8",
+  "회색": "#95a5a6", "그레이": "#95a5a6", "gray": "#95a5a6", "grey": "#95a5a6",
+  "베이지": "#f5f0e6", "beige": "#f5f0e6", "아이보리": "#fffff0",
+};
+function parseColor(m) {
+  const hex = m.match(/#([0-9a-fA-F]{3,8})\b/);
+  if (hex) return "#" + hex[1];
+  for (const k in _COLOR_MAP) { if (m.includes(k)) return _COLOR_MAP[k]; }
+  return null;
+}
+
+// HTML에 body 배경색 규칙을 결정적으로 주입/교체 (AI 미사용)
+function setBodyBackground(html, color) {
+  const rule = `<style id="wgen-userbg">html,body{background:${color} !important;}</style>`;
+  if (/<style id="wgen-userbg">[\s\S]*?<\/style>/.test(html)) {
+    return html.replace(/<style id="wgen-userbg">[\s\S]*?<\/style>/, rule);
+  }
+  const h = html.toLowerCase().lastIndexOf("</head>");
+  if (h !== -1) return html.slice(0, h) + rule + "\n" + html.slice(h);
+  return rule + html;
+}
+
+// "배경 <색>" 전체/페이지 요청을 결정적으로 처리 (현재 + 멀티페이지 전부)
+function applyBackgroundColor(color) {
+  let cur = state.generatedHtml;
+  if (!cur) { addMessage("messages", "assistant", "⚠️ 먼저 페이지를 생성해 주세요."); return false; }
+  cur = setBodyBackground(cur, color);
+  state.generatedHtml = cur;
+  updatePreview(cur, false);
+  const saves = [];
+  const curPath = state.currentViewPath || "index.html";
+  if (curPath !== "index.html") state.multiPageHtmls[curPath] = cur;
+  // 멀티페이지 전부 적용
+  let pages = 1;
+  if (state.multiPageHtmls && Object.keys(state.multiPageHtmls).length) {
+    for (const p in state.multiPageHtmls) {
+      const nh = setBodyBackground(state.multiPageHtmls[p], color);
+      state.multiPageHtmls[p] = nh;
+      if (state.currentProjectId) saves.push(fetch(`/api/projects/${state.currentProjectId}/save_file`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: p, content: nh }) }).catch(() => {}));
+      pages++;
+    }
+  }
+  if (state.currentProjectId) saves.push(fetch(`/api/projects/${state.currentProjectId}/save_file`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: curPath, content: cur }) }).catch(() => {}));
+  Promise.all(saves).then(() => loadFileTree(state.currentProjectId)).catch(() => {});
+  addMessage("messages", "assistant", `🎨 배경색을 ${color}(으)로 변경했습니다${pages > 1 ? ` (${pages}개 페이지)` : ""}.`);
+  state.chatHistory.push({ role: "assistant", content: `배경색 ${color} 적용` });
+  saveProject();
+  enableReviewBtn();
+  return true;
+}
+
 // 업로드 이미지를 갤러리 섹션으로 결정적 삽입 (AI 미사용 → 확실히 적용)
 function insertImageGallery(images) {
   let html = state.generatedHtml;
@@ -1235,6 +1297,11 @@ async function routeByIntent(message, displayMessage, elInfo) {
   }
 
   // ── 요소 미선택 ──
+  // "배경 <색>" (페이지/전체) → 결정적 배경색 적용 (AI 미사용, 확실히 적용)
+  if (/배경|background|바탕/i.test(message) && state.generatedHtml) {
+    const _c = parseColor(message);
+    if (_c) { console.log("[intent] deterministic background", _c); applyBackgroundColor(_c); return; }
+  }
   // 업로드 이미지 + 이미지를 쓰려는 의도가 있을 때만 → 갤러리 섹션 결정적 삽입
   const _imgIntent = /이미지|사진|그림|갤러리|꾸며|넣어|넣어줘|추가|배치|사용|적용|업로드|첨부|image|photo|gallery/i.test(message);
   if (state.uploadedImages.length && state.generatedHtml && _imgIntent) {
