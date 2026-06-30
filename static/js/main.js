@@ -1481,10 +1481,21 @@ async function routeByIntent(message, displayMessage, elInfo) {
       await execElementPatch({ op: "style", styles }, elInfo);
       return;
     }
-    // 0) 업로드 이미지 + 이미지 의도 → src 즉시 교체
-    if (_imgUrl && /이미지|사진|그림|image|img/i.test(message)) {
+    // 0) 이미지로 변경/교체 → img 요소면 src 교체, 아니면 요소를 <img>로 치환 (결정적)
+    if (/이미지|사진|그림|image|img/i.test(message) && /바꿔|바꿔줘|변경|교체|대체|로\s*해|만들/i.test(message)) {
       const isImgEl = (elInfo.tag === "img") || /<img/i.test(elInfo.html || "");
-      if (isImgEl) { console.log("[intent] image src fast-patch", _imgUrl); await execElementPatch({ op: "src", src: _imgUrl }, elInfo); clearUploadedImages(); return; }
+      if (isImgEl && _imgUrl) {
+        console.log("[intent] image src fast-patch", _imgUrl);
+        await execElementPatch({ op: "src", src: _imgUrl }, elInfo); clearUploadedImages(); return;
+      }
+      if (!isImgEl) {
+        // 텍스트 등 다른 요소를 이미지로 교체
+        const imgHtml = _imgUrl
+          ? `<img src="${_imgUrl}" alt="이미지" style="max-width:100%;height:auto;display:block" />`
+          : `<div style="${_IMG_PH};max-width:480px">이미지</div>`;
+        console.log("[intent] replace element with image");
+        await execElementPatch({ op: "html", html: imgHtml }, elInfo); clearUploadedImages(); return;
+      }
     }
     // 1) 고신뢰 휴리스틱 (이미지 없을 때)
     if (!_imgUrl) {
