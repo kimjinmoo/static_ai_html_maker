@@ -1226,20 +1226,13 @@ function applyBackgroundColor(color) {
   return true;
 }
 
-// 업로드 이미지를 갤러리 섹션으로 결정적 삽입 (AI 미사용 → 확실히 적용)
-function insertImageGallery(images) {
+// 섹션 HTML을 푸터 앞(없으면 </body> 앞)에 결정적으로 삽입 + 저장
+function _insertSection(sectionHtml, label) {
   let html = state.generatedHtml;
-  if (!html || !images.length) { addMessage("messages", "assistant", "⚠️ 삽입할 페이지/이미지가 없습니다."); return false; }
-  const cols = Math.min(images.length, 3);
-  const cards = images.map(im =>
-    `<div class="card"><img src="${im.url}" alt="${(im.name || 'image').replace(/"/g, '')}" style="max-width:100%;height:auto;display:block;border-radius:8px" /></div>`
-  ).join("\n        ");
-  const section =
-    `\n<section class="section section-tinted" data-animate>\n  <div class="container">\n    <div class="grid grid-${cols}">\n        ${cards}\n    </div>\n  </div>\n</section>\n`;
-  // 푸터 앞 → 없으면 </body> 앞 → 없으면 끝
+  if (!html) { addMessage("messages", "assistant", "⚠️ 먼저 페이지를 생성해 주세요."); return false; }
   let idx = html.search(/<footer[\s>]/i);
   if (idx === -1) { const b = html.toLowerCase().lastIndexOf("</body>"); idx = b !== -1 ? b : html.length; }
-  html = html.slice(0, idx) + section + html.slice(idx);
+  html = html.slice(0, idx) + "\n" + sectionHtml + "\n" + html.slice(idx);
   state.generatedHtml = html;
   updatePreview(html, false);
   const path = state.currentViewPath || "index.html";
@@ -1250,11 +1243,75 @@ function insertImageGallery(images) {
       body: JSON.stringify({ path, content: html }),
     }).then(() => loadFileTree(state.currentProjectId)).catch(() => {});
   }
-  addMessage("messages", "assistant", `🖼 이미지 ${images.length}개를 갤러리로 추가했습니다. 위치/디자인은 요소를 선택해 다듬어 주세요.`);
-  state.chatHistory.push({ role: "assistant", content: `이미지 ${images.length}개 갤러리 추가` });
+  addMessage("messages", "assistant", `✅ ${label} 섹션을 추가했습니다. 요소를 선택해 내용을 다듬어 주세요.`);
+  state.chatHistory.push({ role: "assistant", content: `${label} 추가` });
   saveProject();
   enableReviewBtn();
   return true;
+}
+
+const _IMG_PH = 'background:var(--surface,#ececec);aspect-ratio:4/3;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#999;font-size:.85rem';
+
+// 업로드 이미지를 갤러리 섹션으로 결정적 삽입
+function insertImageGallery(images) {
+  if (!images.length) { addMessage("messages", "assistant", "⚠️ 삽입할 이미지가 없습니다."); return false; }
+  const cols = Math.min(images.length, 3);
+  const cards = images.map(im =>
+    `<div class="card"><img src="${im.url}" alt="${(im.name || 'image').replace(/"/g, '')}" style="max-width:100%;height:auto;display:block;border-radius:8px" /></div>`
+  ).join("\n      ");
+  const section = `<section class="section section-tinted" data-animate>\n  <div class="container">\n    <div class="grid grid-${cols}">\n      ${cards}\n    </div>\n  </div>\n</section>`;
+  return _insertSection(section, `이미지 갤러리(${images.length}개)`);
+}
+
+// ── 기본 섹션 템플릿 라이브러리 (결정적 삽입, scaffold 클래스 + 한국어) ──
+const SECTION_TEMPLATES = [
+  {
+    keys: /갤러리|gallery/i, label: "갤러리",
+    html: `<section class="section section-tinted" data-animate><div class="container"><div class="section-header"><span class="section-label">GALLERY</span><h2 class="section-title">갤러리</h2></div><div class="grid grid-3">${[1, 2, 3, 4, 5, 6].map(() => `<div class="card"><div style="${_IMG_PH}">이미지</div></div>`).join("")}</div></div></section>`,
+  },
+  {
+    keys: /슬라이드|슬라이더|캐러셀|carousel|slider/i, label: "슬라이드",
+    html: `<section class="section" data-animate><div class="container"><div class="section-header"><span class="section-label">SLIDE</span><h2 class="section-title">슬라이드</h2></div><div style="display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px">${[1, 2, 3, 4].map(i => `<div class="card" style="flex:0 0 80%;max-width:420px;scroll-snap-align:center"><div style="${_IMG_PH}">슬라이드 ${i}</div><h3 class="card-title">슬라이드 제목 ${i}</h3><p class="card-text">좌우로 스크롤하여 더 보세요.</p></div>`).join("")}</div></div></section>`,
+  },
+  {
+    keys: /상품\s*소개|제품\s*소개|상품|제품|product/i, label: "상품 소개",
+    html: `<section class="section section-tinted" data-animate><div class="container"><div class="section-header"><span class="section-label">PRODUCTS</span><h2 class="section-title">상품 소개</h2><p class="section-subtitle">대표 상품을 소개합니다.</p></div><div class="grid grid-3">${[1, 2, 3].map(i => `<div class="card"><div style="${_IMG_PH}">상품 ${i}</div><h3 class="card-title">상품 ${i}</h3><p class="card-text">상품에 대한 간단한 설명을 입력하세요.</p><div style="font-weight:700;margin:8px 0">₩00,000</div><a href="javascript:void(0)" class="btn btn-primary btn-block">자세히 보기</a></div>`).join("")}</div></div></section>`,
+  },
+  {
+    keys: /가격|요금|플랜|pricing|price/i, label: "가격표",
+    html: `<section class="section" data-animate><div class="container"><div class="section-header"><span class="section-label">PRICING</span><h2 class="section-title">요금제</h2></div><div class="grid grid-3">${[["베이직", "₩9,900", false], ["프로", "₩19,900", true], ["엔터프라이즈", "₩49,900", false]].map(([n, p, f]) => `<div class="pricing-card${f ? " featured" : ""}">${f ? '<span class="pricing-label">인기</span>' : ""}<h3 class="card-title">${n}</h3><div class="pricing-price">${p}<span class="pricing-period">/월</span></div><ul class="pricing-features"><li>핵심 기능 포함</li><li>이메일 지원</li><li>월간 리포트</li></ul><a href="javascript:void(0)" class="btn ${f ? "btn-primary" : "btn-secondary"} btn-block">선택하기</a></div>`).join("")}</div></div></section>`,
+  },
+  {
+    keys: /후기|리뷰|고객\s*평|추천사|testimonial|review/i, label: "고객 후기",
+    html: `<section class="section section-tinted" data-animate><div class="container"><div class="section-header"><span class="section-label">REVIEWS</span><h2 class="section-title">고객 후기</h2></div><div class="grid grid-3">${[["김민준", "직장인"], ["이서연", "디자이너"], ["박지후", "사업가"]].map(([n, r]) => `<div class="testimonial"><div class="stars">★★★★★</div><p class="testimonial-text">"서비스가 정말 만족스러웠습니다. 다음에도 꼭 이용할게요."</p><div class="testimonial-author"><div class="testimonial-avatar"></div><div><div class="testimonial-name">${n}</div><div class="testimonial-role">${r}</div></div></div></div>`).join("")}</div></div></section>`,
+  },
+  {
+    keys: /faq|자주\s*묻|질문/i, label: "FAQ",
+    html: `<section class="section" data-animate><div class="container narrow"><div class="section-header"><span class="section-label">FAQ</span><h2 class="section-title">자주 묻는 질문</h2></div>${[["배송은 얼마나 걸리나요?", "주문 후 평균 2~3일 소요됩니다."], ["환불이 가능한가요?", "수령 후 7일 이내 환불 가능합니다."], ["회원가입이 필요한가요?", "비회원으로도 이용 가능합니다."]].map(([q, a]) => `<details class="faq-item" style="padding:16px;border-bottom:1px solid var(--border,#eee)"><summary class="faq-question" style="cursor:pointer;font-weight:600">${q}</summary><p class="faq-answer" style="margin-top:8px;color:var(--text-secondary,#666)">${a}</p></details>`).join("")}</div></section>`,
+  },
+  {
+    keys: /통계|숫자|성과|stat/i, label: "통계",
+    html: `<section class="section" data-animate><div class="container"><div class="grid grid-4">${[["12,000+", "누적 고객"], ["99%", "만족도"], ["50+", "파트너사"], ["24/7", "지원"]].map(([n, l]) => `<div class="stat" style="text-align:center"><div class="stat-number" style="font-size:2rem;font-weight:800">${n}</div><div class="stat-label">${l}</div></div>`).join("")}</div></div></section>`,
+  },
+  {
+    keys: /팀|구성원|멤버|team/i, label: "팀 소개",
+    html: `<section class="section section-tinted" data-animate><div class="container"><div class="section-header"><span class="section-label">TEAM</span><h2 class="section-title">팀 소개</h2></div><div class="grid grid-4">${[["김대표", "CEO"], ["이실장", "CTO"], ["박팀장", "디자인"], ["최매니저", "마케팅"]].map(([n, r]) => `<div class="card" style="text-align:center"><div style="width:96px;height:96px;border-radius:50%;margin:0 auto 12px;background:var(--surface,#ececec)"></div><h3 class="card-title">${n}</h3><p class="card-text">${r}</p></div>`).join("")}</div></div></section>`,
+  },
+  {
+    keys: /문의|연락처|상담|컨택|contact|폼|form/i, label: "문의 폼",
+    html: `<section class="section" data-animate><div class="container narrow"><div class="section-header"><span class="section-label">CONTACT</span><h2 class="section-title">문의하기</h2></div><form onsubmit="return false"><div class="form-group"><label class="form-label">이름</label><input class="form-input" type="text" placeholder="이름을 입력하세요" /></div><div class="form-group"><label class="form-label">이메일</label><input class="form-input" type="email" placeholder="email@example.com" /></div><div class="form-group"><label class="form-label">문의 내용</label><textarea class="form-textarea" rows="4" placeholder="내용을 입력하세요"></textarea></div><button class="btn btn-primary btn-block" type="submit">보내기</button></form></div></section>`,
+  },
+  {
+    keys: /cta|행동\s*유도|배너/i, label: "CTA",
+    html: `<section class="section cta" data-animate><div class="container" style="text-align:center"><h2 class="cta-title">지금 시작하세요</h2><p class="cta-subtitle">간편하게 가입하고 모든 기능을 사용해 보세요.</p><a href="javascript:void(0)" class="btn btn-cta btn-lg">무료로 시작하기</a></div></section>`,
+  },
+];
+
+function findSectionTemplate(message) {
+  // 삽입/생성 의도가 있을 때만
+  if (!/추가|넣어|넣어줘|만들|삽입|생성|붙여|줘|해줘|템플릿/i.test(message)) return null;
+  for (const t of SECTION_TEMPLATES) { if (t.keys.test(message)) return t; }
+  return null;
 }
 
 // AI 의도 분류 기반 라우팅 — 채팅 문장을 AI가 이해해 결정적으로 분기한다.
@@ -1311,6 +1368,11 @@ async function routeByIntent(message, displayMessage, elInfo) {
     insertImageGallery(state.uploadedImages.slice());
     clearUploadedImages();
     return;
+  }
+  // 기본 섹션 템플릿 (갤러리/슬라이드/상품소개/가격표/후기/FAQ/통계/팀/문의/CTA) → 결정적 삽입
+  if (state.generatedHtml) {
+    const _tpl = findSectionTemplate(message);
+    if (_tpl) { console.log("[intent] section template →", _tpl.label); _insertSection(_tpl.html, _tpl.label); return; }
   }
   // 전체 재디자인/리팩토링 → 페이지 전체 편집
   if (_redesign || _wantsWhole) { console.log("[intent] redesign/whole → full edit"); await sendMessageV2(message, displayMessage, null, "edit"); return; }
