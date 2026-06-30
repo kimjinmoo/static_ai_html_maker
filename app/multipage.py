@@ -48,6 +48,8 @@ def generate_pages(ds, pages, user_message, history):
         content = _stream_content(ds, page, user_message, history)
         if not content.strip():
             content = f'<section class="hero"><div class="container"><h1 class="hero-title">{page["title"]}</h1></div></section>'
+        from app.utils import balance_tags
+        content = balance_tags(content)
         frame = ds.build_frame(title=page["title"], current_file=page["file"])
         html = ensure_complete_html(frame.replace("{CONTENT}", content))
         yield {"file": page["file"], "title": page["title"], "html": html}

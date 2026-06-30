@@ -12,7 +12,7 @@ from app.mode import classify_mode
 from app.sse import sse_event, EventType
 from app.thinking import filter_thinking_stream
 from app.utils import (sanitize_surrogates, ensure_complete_html,
-                       strip_thinking, _remove_truncated_lines)
+                       strip_thinking, _remove_truncated_lines, balance_tags)
 
 stream_bp = Blueprint("stream", __name__)
 
@@ -156,6 +156,7 @@ def chat_stream_v2():
                     content = ('<section class="hero"><div class="container">'
                                '<div class="hero-content"><h1 class="hero-title">'
                                f'{message[:50]}</h1></div></div></section>')
+                content = balance_tags(content)  # 안 닫힌 태그 결정적 자동 닫기
                 html = ds.build_frame(title=message[:50] or "Page").replace("{CONTENT}", content)
                 html = ensure_complete_html(html)
             else:  # EDIT / DELETE

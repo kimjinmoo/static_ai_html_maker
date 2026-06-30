@@ -525,6 +525,42 @@ def merge_style_blocks(html):
     return html
 
 
+_VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input",
+              "link", "meta", "param", "source", "track", "wbr"}
+_SKIP_BALANCE = {"script", "style"}
+
+
+def balance_tags(fragment):
+    """HTML 조각의 닫히지 않은 블록 태그를 결정적으로 자동 닫는다.
+
+    스택으로 열림/닫힘을 추적하고, 닫힘 태그는 스택에서 일치까지 팝(중첩 보정),
+    끝에 남은 열린 태그를 역순으로 닫아 붙인다. void/self-closing/script/style은 무시.
+    이미 균형 잡힌 HTML은 그대로 반환한다. (추가만, 제거 없음)
+    """
+    if not fragment:
+        return fragment
+    stack = []
+    for m in re.finditer(r'<(/?)([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*?(/?)>', fragment):
+        closing = m.group(1) == '/'
+        tag = m.group(2).lower()
+        selfclose = m.group(3) == '/'
+        if tag in _VOID_TAGS or tag in _SKIP_BALANCE:
+            continue
+        if closing:
+            if tag in stack:
+                while stack and stack[-1] != tag:
+                    stack.pop()
+                if stack:
+                    stack.pop()
+            # 짝 없는 닫힘은 무시
+        elif not selfclose:
+            stack.append(tag)
+    if not stack:
+        return fragment
+    closers = "".join("</%s>" % t for t in reversed(stack))
+    return fragment + closers
+
+
 def ensure_complete_html(html):
     """Validate and auto-fix incomplete HTML.
 
