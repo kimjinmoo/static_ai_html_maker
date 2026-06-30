@@ -1420,8 +1420,23 @@ async function routeByIntent(message, displayMessage, elInfo) {
   const _wantsWhole = /전체|전부|모두|싹\s*다|페이지\s*전체|사이트|whole|entire|(^|\s)all(\s|$)/i.test(message);
   const _redesign = /리팩토링|리팩터|재구성|갈아엎|새로\s*디자인|다시\s*디자인|디자인\s*(새로|다시|갈아|바꿔|변경|개선|리뉴얼)|처음부터|전체\s*디자인|새롭게|리뉴얼|refactor|redesign/i.test(message);
 
-  // 메뉴(네비) 항목 추가 → 결정적 nav-link 삽입 (선택 무관)
-  if (/메뉴|네비|nav/i.test(message) && /추가|넣어|만들|삽입/i.test(message) && state.generatedHtml) {
+  // 새 페이지 생성 의도 ("(이 링크/메뉴) 페이지 만들어줘") — 메뉴추가보다 우선
+  const _newPage = /(하위|서브|새|신규)?\s*페이지\s*(를)?\s*(만들|생성|추가|연결)/i.test(message) || /페이지\s*(만들어|생성해|추가해)/i.test(message);
+  if (_newPage && elInfo && state.generatedHtml) {
+    const linkText = (elInfo.text || "새 페이지").trim();
+    let slug = linkText.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    slug = (slug || "page") + "-" + Date.now().toString(36).slice(-3);
+    state.pendingPageName = slug + ".html";
+    state.pendingMainHtml = state.generatedHtml;
+    state.pendingLinkTextValue = linkText;
+    state.pendingLinkHrefValue = elInfo.linkHref || "#";
+    console.log("[intent] new sub-page from element →", state.pendingPageName);
+    await sendMessageAuto(message);
+    return;
+  }
+
+  // 메뉴(네비) 항목 추가 → 결정적 nav-link 삽입 (단, '페이지' 생성 요청은 위에서 처리)
+  if (/메뉴|네비|nav/i.test(message) && /추가|넣어|삽입|만들/i.test(message) && !/페이지/i.test(message) && state.generatedHtml) {
     console.log("[intent] add nav menu");
     if (addNavMenu(_extractMenuName(message))) return;
   }
