@@ -590,7 +590,7 @@ var devMode=${state.devMode};
 var sty=document.getElementById("wgen-style")||function(){var s=document.createElement("style");s.id="wgen-style";s.textContent="img{max-width:100%;height:auto}body.wgen-devmode{cursor:crosshair!important}body.wgen-devmode .wgen-selected{outline:3px solid #6c5ce7!important;outline-offset:2px;cursor:pointer!important}body.wgen-devmode .wgen-hover{outline:2px dashed #00cec9!important;outline-offset:1px;cursor:pointer!important}";document.head.appendChild(s);return s}();
 function applyDevMode(v){var b=document.body;if(b)b.classList.toggle("wgen-devmode",v)};
 var _dm=devMode;applyDevMode(_dm);if(!document.body)document.addEventListener("DOMContentLoaded",function(){applyDevMode(_dm)});
-window.addEventListener("message",function(e){if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;applyDevMode(devMode);if(!devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}}else if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}else if(e.data&&e.data.type==="wgen-apply-patch"){var _p=e.data.patch||{},_wid=e.data.wgenId,_n=_wid?document.querySelector('[data-wgen-id="'+_wid+'"]'):null;if(!_n)_n=el;var _ok=false;if(_n){try{if(_p.op==="delete"){_n.remove();_ok=true}else if(_p.op==="text"){if(_p.text!=null){_n.textContent=_p.text;_ok=true}}else if(_p.op==="href"){_n.setAttribute("href",_p.href||"#");_ok=true}else if(_p.op==="src"){var _im=_n.tagName==="IMG"?_n:_n.querySelector("img");if(_im){_im.setAttribute("src",_p.src||"");_ok=true}}else if(_p.op==="style"){var _st=_p.styles||{};for(var _k in _st){_n.style.setProperty(_k,_st[_k],"important")}_ok=true}else if(_p.op==="html"){if(_p.html){_n.outerHTML=_p.html;_ok=true}}else if(_p.op==="insert"){if(_p.html){_n.insertAdjacentHTML(_p.position==="before"?"beforebegin":"afterend",_p.html);_ok=true}}}catch(_er){_ok=false}}if(_p.op==="delete-multi"){try{(_p.ids||[]).forEach(function(id){var dn=document.querySelector('[data-wgen-id="'+id+'"]');if(dn)dn.remove()});_ok=true}catch(_e3){_ok=false}}var _html="";try{var _root=document.documentElement.cloneNode(true);_root.querySelectorAll("#wgen-interaction,#wgen-error-catcher,#wgen-style,#wgen-reveal,#wgen-base").forEach(function(x){x.remove()});_root.querySelectorAll("[data-wgen-id]").forEach(function(x){x.removeAttribute("data-wgen-id")});_root.querySelectorAll(".wgen-hover,.wgen-selected").forEach(function(x){x.classList.remove("wgen-hover");x.classList.remove("wgen-selected")});var _b=_root.querySelector("body");if(_b)_b.classList.remove("wgen-devmode");_html="<!DOCTYPE html>\\n"+_root.outerHTML}catch(_e2){_html=""}window.parent.postMessage({type:"wgen-patched",ok:_ok&&!!_html,html:_html},"*")}});
+window.addEventListener("message",function(e){if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;applyDevMode(devMode);if(!devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}}else if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}else if(e.data&&e.data.type==="wgen-apply-patch"){var _p=e.data.patch||{},_wid=e.data.wgenId,_n=_wid?document.querySelector('[data-wgen-id="'+_wid+'"]'):null;if(!_n)_n=el;var _ok=false;if(_n){try{if(_p.op==="delete"){_n.remove();_ok=true}else if(_p.op==="text"){if(_p.text!=null){_n.textContent=_p.text;_ok=true}}else if(_p.op==="href"){_n.setAttribute("href",_p.href||"#");_ok=true}else if(_p.op==="src"){var _im=_n.tagName==="IMG"?_n:_n.querySelector("img");if(_im){_im.setAttribute("src",_p.src||"");_ok=true}}else if(_p.op==="style"){var _st=_p.styles||{};for(var _k in _st){_n.style.setProperty(_k,_st[_k],"important")}_ok=true}else if(_p.op==="html"){if(_p.html){_n.outerHTML=_p.html;_ok=true}}else if(_p.op==="insert"){if(_p.html){_n.insertAdjacentHTML(_p.position==="before"?"beforebegin":"afterend",_p.html);_ok=true}}else if(_p.op==="align"){var _a=_p.value||"center";_n.style.setProperty("text-align",_a,"important");_n.querySelectorAll("h1,h2,h3,h4,h5,h6,p,span,a,button,li,blockquote,figcaption,label,.section-header,.section-title,.section-subtitle,.hero-content,.hero-title,.hero-subtitle,.card,.card-title,.card-text").forEach(function(c){c.style.setProperty("text-align",_a,"important")});if(_a==="center"){_n.querySelectorAll(".hero-actions,.cta,.section-header").forEach(function(c){c.style.setProperty("justify-content","center","important")})}_ok=true}}catch(_er){_ok=false}}if(_p.op==="delete-multi"){try{(_p.ids||[]).forEach(function(id){var dn=document.querySelector('[data-wgen-id="'+id+'"]');if(dn)dn.remove()});_ok=true}catch(_e3){_ok=false}}var _html="";try{var _root=document.documentElement.cloneNode(true);_root.querySelectorAll("#wgen-interaction,#wgen-error-catcher,#wgen-style,#wgen-reveal,#wgen-base").forEach(function(x){x.remove()});_root.querySelectorAll("[data-wgen-id]").forEach(function(x){x.removeAttribute("data-wgen-id")});_root.querySelectorAll(".wgen-hover,.wgen-selected").forEach(function(x){x.classList.remove("wgen-hover");x.classList.remove("wgen-selected")});var _b=_root.querySelector("body");if(_b)_b.classList.remove("wgen-devmode");_html="<!DOCTYPE html>\\n"+_root.outerHTML}catch(_e2){_html=""}window.parent.postMessage({type:"wgen-patched",ok:_ok&&!!_html,html:_html},"*")}});
 document.addEventListener("mouseover",function(e){if(!devMode||e.target.tagName==="BODY"||e.target.tagName==="HTML"||el===e.target)return;document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});e.target.classList.add("wgen-hover")});
 document.addEventListener("mouseout",function(e){if(!devMode)return;if(el!==e.target)e.target.classList.remove("wgen-hover")});
 var _lpT=null,_lpX=0,_lpY=0,_lpFired=false,_multi=[];
@@ -601,6 +601,7 @@ document.addEventListener("mouseup",function(){if(_lpT){clearTimeout(_lpT);_lpT=
 document.addEventListener("touchstart",function(e){if(!devMode||!e.touches[0])return;_lpX=e.touches[0].clientX;_lpY=e.touches[0].clientY;_lpFired=false;var t=e.target;if(_lpT)clearTimeout(_lpT);_lpT=setTimeout(function(){_lpFired=true;_lpSel(t)},500)},{passive:true});
 document.addEventListener("touchmove",function(e){var t=e.touches[0];if(_lpT&&t&&(Math.abs(t.clientX-_lpX)>10||Math.abs(t.clientY-_lpY)>10)){clearTimeout(_lpT);_lpT=null}},{passive:true});
 document.addEventListener("touchend",function(){if(_lpT){clearTimeout(_lpT);_lpT=null}});
+document.addEventListener("keydown",function(e){if(!devMode)return;var t=e.target;if(t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.isContentEditable))return;if((e.key==="Delete"||e.key==="Backspace")&&(el||_multi.length)){e.preventDefault();window.parent.postMessage({type:"delete-key"},"*")}});
 document.addEventListener("click",function(e){if(_lpFired){_lpFired=false;e.preventDefault();e.stopPropagation();return}if(e.button!==0)return;if(e.shiftKey&&devMode){if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;e.preventDefault();e.stopPropagation();var _t=e.target;if(!_t.getAttribute("data-wgen-id"))_t.setAttribute("data-wgen-id","w"+Math.random().toString(36).slice(2,8));var _w2=_t.getAttribute("data-wgen-id"),_mi=_multi.indexOf(_w2);if(_mi===-1){_multi.push(_w2);_t.classList.add("wgen-selected")}else{_multi.splice(_mi,1);_t.classList.remove("wgen-selected")}var _items=_multi.map(function(id){var n=document.querySelector('[data-wgen-id="'+id+'"]');return n?{wgen_id:id,tag:n.tagName.toLowerCase(),text:(n.innerText||"").substring(0,40).trim()}:null}).filter(Boolean);window.parent.postMessage({type:"elements-multi-selected",items:_items},"*");return}if(_multi.length){_multi.forEach(function(id){var n=document.querySelector('[data-wgen-id="'+id+'"]');if(n)n.classList.remove("wgen-selected")});_multi=[]}var l=e.target.closest("a");if(l){var h=l.getAttribute("data-nav")||l.getAttribute("href");if(!devMode){if(!h||h===""||h.startsWith("javascript:")){e.preventDefault();return}e.preventDefault();window.parent.postMessage({type:"preview-link-clicked",href:h,text:(l.innerText||"").substring(0,100).trim(),tag:"a",classes:(l.className||"").toString().trim()},"*");return}e.preventDefault();e.stopPropagation();document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===l){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=l;l.classList.remove("wgen-hover");l.classList.add("wgen-selected");if(!l.getAttribute("data-wgen-id")){l.setAttribute("data-wgen-id","w"+Math.random().toString(36).slice(2,8))}var _lcl=(l.className||"").toString().replace(/\\bwgen-(hover|selected|devmode)\\b/g,"").replace(/\\s+/g," ").trim();window.parent.postMessage({type:"element-selected",wgen_id:l.getAttribute("data-wgen-id"),tag:"a",id:l.id||"",classes:_lcl,text:(l.innerText||"").substring(0,100).trim(),html:l.outerHTML.replace(/\\sdata-wgen-id="[^"]*"/g,"").substring(0,500),linkHref:h},"*");return}if(!devMode)return;e.stopPropagation();if(e.target.tagName==="BODY"||e.target.tagName==="HTML")return;document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});if(el===e.target){el=null;window.parent.postMessage({type:"element-deselected"},"*");return}el=e.target;e.target.classList.add("wgen-selected");if(!e.target.getAttribute("data-wgen-id")){e.target.setAttribute("data-wgen-id","w"+Math.random().toString(36).slice(2,8))}var _wid=e.target.getAttribute("data-wgen-id");var _cl=(e.target.className||"").toString().replace(/\\bwgen-(hover|selected|devmode)\\b/g,"").replace(/\\s+/g," ").trim();var _oh=e.target.outerHTML.replace(/\\sdata-wgen-id="[^"]*"/g,"").replace(/\\bwgen-(hover|selected|devmode)\\b/g,"").replace(/class="\\s*"/g,"").substring(0,800);window.parent.postMessage({type:"element-selected",wgen_id:_wid,tag:e.target.tagName.toLowerCase(),id:e.target.id||"",classes:_cl,text:(e.target.innerText||"").substring(0,100).trim(),html:_oh},"*")});
 function _rv(){document.querySelectorAll("[data-animate]").forEach(function(e){e.classList.add("visible")})}
 function _rt(){var y=document.getElementById("year");if(y)y.textContent=(new Date).getFullYear();var t=document.querySelector(".nav-toggle"),m=document.querySelector(".nav-menu");if(t&&m)t.addEventListener("click",function(){m.classList.toggle("open")});var n=document.querySelector(".nav");if(n)window.addEventListener("scroll",function(){window.scrollY>20?n.classList.add("scrolled"):n.classList.remove("scrolled")})}
@@ -1382,8 +1383,15 @@ function addNavMenu(name) {
   let last = null, m;
   while ((m = re.exec(html))) last = m;
   if (last) {
-    const idx = last.index + last[0].length;
-    html = html.slice(0, idx) + "\n          " + link + html.slice(idx);
+    const after = html.slice(last.index + last[0].length, last.index + last[0].length + 24);
+    if (/^\s*<\/li>/i.test(after)) {
+      // 메뉴가 <li>로 감싼 구조 → 같은 형식으로 </li> 뒤에 삽입 (한 줄 유지)
+      const liEnd = html.indexOf("</li>", last.index + last[0].length - 1) + 5;
+      html = html.slice(0, liEnd) + `\n          <li><a href="javascript:void(0)" class="nav-link">${name}</a></li>` + html.slice(liEnd);
+    } else {
+      const idx = last.index + last[0].length;
+      html = html.slice(0, idx) + "\n          " + link + html.slice(idx);
+    }
   } else {
     const nm = html.search(/class="[^"]*\bnav-menu\b[^"]*"/i);
     if (nm === -1) { addMessage("messages", "assistant", "⚠️ 네비게이션(메뉴)을 찾지 못했습니다. 멀티페이지로 생성하면 메뉴가 생깁니다."); return false; }
@@ -1463,6 +1471,18 @@ window._chooseSection = function () {
   window._pendingPageReq = null;
   addMenuSection(r.elInfo);
 };
+
+// 선택 요소 삭제 (단일/멀티) — Delete 키 또는 "삭제" 요청
+async function deleteSelectedElement() {
+  if (state.multiSelected && state.multiSelected.length) { await deleteMultiSelected(); return true; }
+  if (state.selectedElement && state.selectedElement.wgen_id) {
+    await execElementPatch({ op: "delete" }, state.selectedElement);
+    state.selectedElement = null;
+    if (typeof hideSelectedElementBar === "function") hideSelectedElementBar();
+    return true;
+  }
+  return false;
+}
 
 // 멀티 선택 요소 일괄 삭제 (Shift+클릭으로 선택한 것들)
 async function deleteMultiSelected() {
@@ -1561,11 +1581,14 @@ async function routeByIntent(message, displayMessage, elInfo) {
     if (_align && /(정렬|align|배치|맞춰|놓|중앙|가운데|센터|왼쪽|오른쪽)/i.test(message)) {
       const _bigTags = ["section", "div", "main", "article", "header", "footer", "nav", "aside", "ul", "ol", "form", "figure", "table"];
       const _isBig = _bigTags.includes((elInfo.tag || "").toLowerCase());
-      let styles;
       if (_isBig) {
-        // 큰 레이아웃 요소: 폭 줄이지 말고 내부 콘텐츠만 정렬 (쪼그라든 경우 width 복구)
-        styles = { "text-align": _align, "width": "auto", "margin-left": "0", "margin-right": "0" };
-      } else if (_align === "center") {
+        // 큰 레이아웃 요소: 내부 콘텐츠 전체(자손 텍스트 요소)를 정렬
+        console.log("[intent] section align (deep)", _align);
+        await execElementPatch({ op: "align", value: _align }, elInfo);
+        return;
+      }
+      let styles;
+      if (_align === "center") {
         styles = { "display": "block", "margin-left": "auto", "margin-right": "auto", "width": "fit-content", "max-width": "100%", "text-align": "center" };
       } else if (_align === "left") {
         styles = { "display": "block", "margin-left": "0", "margin-right": "auto", "width": "fit-content" };
@@ -2111,7 +2134,19 @@ window.addEventListener("message", function (e) {
     }
   }
 
+  if (d.type === "delete-key") { deleteSelectedElement(); }
+
   if (d.type === "element-deselected") { if (!state.pendingElementAction) { hideSelectedElementBar(); } }
+});
+
+// 부모 화면에 포커스가 있을 때도 Delete로 선택 요소 삭제
+document.addEventListener("keydown", function (e) {
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  if (e.key === "Delete" && (state.selectedElement || (state.multiSelected && state.multiSelected.length))) {
+    e.preventDefault();
+    deleteSelectedElement();
+  }
 });
 
 // ── Export Project (Deployable HTML) ──
@@ -2626,6 +2661,7 @@ function onBackendChange() {
   const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? "" : "none"; };
   show("set-group-ollama", b === "ollama");
   show("set-group-gemini", b === "gemini");
+  show("set-group-openai", b === "openai");
   show("set-group-local", b === "local");
 }
 
@@ -2655,6 +2691,11 @@ async function openSettingsModal() {
     const keyField = document.getElementById("set-gemini-key");
     keyField.value = "";
     keyField.placeholder = s.gemini_api_key_set ? "(설정됨 — 변경 시에만 입력)" : "API 키 입력";
+    // openai
+    const ob = document.getElementById("set-openai-base"); if (ob) ob.value = s.openai_base_url || "";
+    const om = document.getElementById("set-openai-model"); if (om) om.value = s.openai_model || "";
+    const ok = document.getElementById("set-openai-key");
+    if (ok) { ok.value = ""; ok.placeholder = s.openai_api_key_set ? "(설정됨 — 변경 시에만 입력)" : "API 키 입력"; }
   } catch (e) { /* ignore */ }
   onBackendChange();
 }
@@ -2678,6 +2719,9 @@ function _collectSettings() {
     gemini_api_key: document.getElementById("set-gemini-key").value.trim(),
     gemini_model: document.getElementById("set-gemini-model").value.trim(),
     model_path: document.getElementById("set-model-path").value.trim(),
+    openai_base_url: (document.getElementById("set-openai-base") || {}).value ? document.getElementById("set-openai-base").value.trim() : "",
+    openai_model: (document.getElementById("set-openai-model") || {}).value ? document.getElementById("set-openai-model").value.trim() : "",
+    openai_api_key: (document.getElementById("set-openai-key") || {}).value ? document.getElementById("set-openai-key").value.trim() : "",
   };
 }
 
@@ -2746,6 +2790,20 @@ const _BACKEND_GUIDES = {
         <li><b>🔌 연결 테스트</b> → <b>💾 저장 및 적용</b>. 키는 서버 settings.json에 저장(빈칸 저장 시 기존 키 유지).</li>
       </ol>
       <p style="color:var(--text-muted,#888);font-size:12px">⚠️ API 키는 외부에 노출하지 마세요. 사용량에 따라 과금될 수 있습니다.</p>`,
+  },
+  openai: {
+    title: "🔌 OpenAI 호환 연동 가이드",
+    link: "https://platform.openai.com/api-keys",
+    body: `<p><b>OpenAI 호환 API</b>는 <code>/chat/completions</code> 규격을 따르는 모든 제공처에 연결됩니다. Base URL만 바꾸면 됩니다.</p>
+      <ol class="setting-guide-steps">
+        <li><b>OpenAI</b>: 키 <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com</a>, Base URL <code>https://api.openai.com/v1</code>, 모델 <code>gpt-4o-mini</code>/<code>gpt-4o</code></li>
+        <li><b>DeepSeek</b>: Base URL <code>https://api.deepseek.com/v1</code>, 모델 <code>deepseek-chat</code></li>
+        <li><b>Groq</b>: <code>https://api.groq.com/openai/v1</code>, 모델 <code>llama-3.3-70b-versatile</code> 등</li>
+        <li><b>OpenRouter</b>: <code>https://openrouter.ai/api/v1</code> (여러 모델 통합)</li>
+        <li><b>로컬 vLLM/LM Studio</b>: <code>http://localhost:8000/v1</code> 등</li>
+        <li>API 키·Base URL·모델 입력 → <b>🔌 연결 테스트</b> → <b>💾 저장 및 적용</b>.</li>
+      </ol>
+      <p style="color:var(--text-muted,#888);font-size:12px">⚠️ Base URL은 보통 <code>/v1</code>까지 포함합니다. 제공처 문서를 확인하세요.</p>`,
   },
   local: {
     title: "💻 로컬 모델 (llama-cpp) 가이드",

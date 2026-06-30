@@ -25,6 +25,18 @@ def list_models():
                 "backend": "ollama",
                 "host": cfg.get("ollama_host", ""),
             })
+        if backend == "openai":
+            if cfg.get("openai_api_key"):
+                return jsonify({
+                    "models": [cfg.get("openai_model", "")],
+                    "status": "ready",
+                    "backend": "openai",
+                    "host": cfg.get("openai_base_url", ""),
+                })
+            return jsonify({
+                "models": [], "status": "no_model", "backend": "openai",
+                "hint": "OpenAI 호환 API 키를 설정하세요 (⚙️ 설정)",
+            })
         if backend == "gemini":
             if cfg.get("gemini_api_key"):
                 return jsonify({

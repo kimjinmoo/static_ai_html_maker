@@ -17,6 +17,9 @@ FIELDS = [
     "gemini_api_key",
     "gemini_model",
     "model_path",
+    "openai_api_key",
+    "openai_base_url",
+    "openai_model",
 ]
 
 
@@ -33,6 +36,9 @@ def _env_defaults():
         "gemini_api_key": config.GEMINI_API_KEY,
         "gemini_model": config.GEMINI_MODEL,
         "model_path": config.MODEL_PATH,
+        "openai_api_key": config.OPENAI_API_KEY,
+        "openai_base_url": config.OPENAI_BASE_URL,
+        "openai_model": config.OPENAI_MODEL,
     }
 
 

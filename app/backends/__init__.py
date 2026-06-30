@@ -21,6 +21,10 @@ def get_backend():
             from app.backends.ollama import OllamaBackend
             _backend = OllamaBackend(host=cfg.get("ollama_host"), model=cfg.get("ollama_model"))
             print(f"  [Backend] Ollama ({cfg.get('ollama_model')} @ {cfg.get('ollama_host')})")
+        elif backend == "openai":
+            from app.backends.openai_compat import OpenAICompatBackend
+            _backend = OpenAICompatBackend(api_key=cfg.get("openai_api_key"), base_url=cfg.get("openai_base_url"), model=cfg.get("openai_model"))
+            print(f"  [Backend] OpenAI-compat ({cfg.get('openai_model')} @ {cfg.get('openai_base_url')})")
         elif backend == "gemini":
             try:
                 from app.backends.gemini import GeminiBackend

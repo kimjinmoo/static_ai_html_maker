@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebGen AI - 홈페이지 마법사</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=gemmodels1" />
+    <link rel="stylesheet" href="/static/css/style.css?v=batch1" />
   </head>
   <body>
     <div class="app-container">
@@ -698,7 +698,34 @@
               <option value="local">로컬 (llama-cpp / GGUF)</option>
               <option value="ollama">Ollama (외부 HTTP API)</option>
               <option value="gemini">Google Gemini API</option>
+              <option value="openai">OpenAI 호환 (OpenAI / DeepSeek / Groq ...)</option>
             </select>
+          </div>
+
+          <div class="setting-group" id="set-group-openai">
+            <div class="setting-guide">
+              <div class="setting-guide-title">
+                <span>🔌 OpenAI 호환 연동</span>
+                <button type="button" class="setting-guide-link" onclick="showBackendGuide('openai')">❓ 상세 가이드</button>
+              </div>
+              <ol class="setting-guide-steps">
+                <li>OpenAI, DeepSeek, Groq, Together, OpenRouter, 로컬 vLLM/LM Studio 등 OpenAI 호환 API 지원</li>
+                <li>제공처의 <b>API 키</b>와 <b>Base URL</b> 입력 (OpenAI는 <code>https://api.openai.com/v1</code>)</li>
+                <li><b>모델명</b> 입력 후 <b>연결 테스트</b> → <b>저장 및 적용</b></li>
+              </ol>
+            </div>
+            <div class="setting-row">
+              <label class="setting-label" for="set-openai-base">Base URL</label>
+              <input id="set-openai-base" class="setting-input" type="text" placeholder="https://api.openai.com/v1" />
+            </div>
+            <div class="setting-row">
+              <label class="setting-label" for="set-openai-key">API 키</label>
+              <input id="set-openai-key" class="setting-input" type="password" placeholder="(설정 시 변경, 빈칸이면 유지)" />
+            </div>
+            <div class="setting-row">
+              <label class="setting-label" for="set-openai-model">모델</label>
+              <input id="set-openai-model" class="setting-input" type="text" placeholder="gpt-4o-mini / deepseek-chat / llama-3.1-70b ..." />
+            </div>
           </div>
 
           <div class="setting-group" id="set-group-ollama">
@@ -798,6 +825,6 @@
       </div>
     </div>
 
-    <script src="/static/js/main.js?v=gemmodels1"></script>
+    <script src="/static/js/main.js?v=batch1"></script>
   </body>
 </html>
