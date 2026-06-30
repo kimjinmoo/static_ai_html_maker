@@ -1166,61 +1166,65 @@ async function execElementPatch(patch, elInfo) {
 async function routeByIntent(message, displayMessage, elInfo) {
   const _lastImg = state.uploadedImages.length ? state.uploadedImages[state.uploadedImages.length - 1] : null;
   const _imgUrl = _lastImg ? _lastImg.url : "";
-
-  // 전체 재디자인/리팩토링 요청 (요소 미선택) → 페이지 전체 편집
+  const _wantsWhole = /전체|전부|모두|싹\s*다|페이지\s*전체|사이트|whole|entire|(^|\s)all(\s|$)/i.test(message);
   const _redesign = /리팩토링|리팩터|재구성|갈아엎|새로\s*디자인|다시\s*디자인|디자인\s*(새로|다시|갈아|바꿔|변경|개선|리뉴얼)|처음부터|전체\s*디자인|새롭게|리뉴얼|refactor|redesign/i.test(message);
-  if (_redesign && !elInfo) {
-    console.log("[intent] redesign → full page edit");
-    await sendMessageV2(message, displayMessage, null, "edit");
-    return;
-  }
 
-  // 0) 업로드 이미지 + 선택 요소 + 이미지 의도 → src 즉시 교체 (요소가 img거나 img 포함)
-  if (elInfo && _imgUrl && /이미지|사진|그림|image|img/i.test(message)) {
-    const isImgEl = (elInfo.tag === "img") || /<img/i.test(elInfo.html || "");
-    if (isImgEl) { console.log("[intent] image src fast-patch", _imgUrl); await execElementPatch({ op: "src", src: _imgUrl }, elInfo); clearUploadedImages(); return; }
-  }
-
-  // 1) 고신뢰 휴리스틱(선택 요소): 즉시 패치 (AI 호출 절약)
-  if (elInfo && !_imgUrl) {
-    const lp = tryLocalPatch(message, elInfo);
-    if (lp) { console.log("[intent] local fast-patch", JSON.stringify(lp)); await execElementPatch(lp, elInfo); return; }
-  }
-  // 2) AI 의도 분류 (첨부 이미지 URL 포함)
-  let intent;
-  try {
-    const r = await fetch("/api/intent", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, has_element: !!elInfo, has_html: !!state.generatedHtml, element: elInfo || null, image_url: _imgUrl }),
-    });
-    intent = await r.json();
-  } catch (e) { intent = { action: "edit", scope: elInfo ? "element" : "page", op: "none" }; }
-  console.log("[intent]", JSON.stringify(intent));
-
-  // 3) 라우팅
-  if (intent.action === "ask") { await sendMessageV2(message, displayMessage, null, "ask"); return; }
-  if (intent.action === "generate" || intent.action === "new_page") {
-    await sendMessageV2(message, displayMessage, null, "generate"); return;
-  }
-  // 요소 범위 편집/삭제 → 그 요소만 패치
-  if (elInfo && intent.scope === "element" && (intent.action === "edit" || intent.action === "delete")) {
+  // ── 요소 선택 시: '전체' 명시가 없으면 무조건 그 요소만 변경 (절대 전체 재생성/diff 안 함) ──
+  if (elInfo && !_wantsWhole) {
+    // 0) 업로드 이미지 + 이미지 의도 → src 즉시 교체
+    if (_imgUrl && /이미지|사진|그림|image|img/i.test(message)) {
+      const isImgEl = (elInfo.tag === "img") || /<img/i.test(elInfo.html || "");
+      if (isImgEl) { console.log("[intent] image src fast-patch", _imgUrl); await execElementPatch({ op: "src", src: _imgUrl }, elInfo); clearUploadedImages(); return; }
+    }
+    // 1) 고신뢰 휴리스틱 (이미지 없을 때)
+    if (!_imgUrl) {
+      const lp = tryLocalPatch(message, elInfo);
+      if (lp) { console.log("[intent] local fast-patch", JSON.stringify(lp)); await execElementPatch(lp, elInfo); return; }
+    }
+    // 2) AI 의도로 op/value만 얻고 scope는 element로 강제
+    let intent;
+    try {
+      const r = await fetch("/api/intent", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, has_element: true, has_html: true, element: elInfo, image_url: _imgUrl }),
+      });
+      intent = await r.json();
+    } catch (e) { intent = { action: "edit", op: "none" }; }
+    console.log("[intent:element]", JSON.stringify(intent));
     let patch = null;
     const _badVal = intent.value && (/wgen-/.test(intent.value) || (elInfo.classes && intent.value === elInfo.classes));
     if (intent.action === "delete") patch = { op: "delete" };
     else if (intent.op === "text" && intent.value && !_badVal) patch = { op: "text", text: intent.value };
-    else if (intent.op === "style" && intent.styles) patch = { op: "style", styles: intent.styles };
+    else if (intent.op === "style" && intent.styles && Object.keys(intent.styles).length) patch = { op: "style", styles: intent.styles };
     else if (intent.op === "href" && intent.value) patch = { op: "href", href: intent.value };
     else if (intent.op === "src") patch = { op: "src", src: intent.value || _imgUrl };
     if (patch) { await execElementPatch(patch, elInfo); if (_imgUrl) clearUploadedImages(); return; }
-    // op=html/none 등 → 요소만 재작성(force_html, 첨부 이미지 URL 전달) 시도
+    // op=html/none 등 → 요소만 재작성(force_html). 실패해도 전체 재생성 안 함.
     await tryFastEdit(message, elInfo, _imgUrl); if (_imgUrl) clearUploadedImages(); return;
   }
-  // 사이트 전체 → 전체 편집
+
+  // ── 요소 미선택 ──
+  // 전체 재디자인/리팩토링 → 페이지 전체 편집
+  if (_redesign || _wantsWhole) { console.log("[intent] redesign/whole → full edit"); await sendMessageV2(message, displayMessage, null, "edit"); return; }
+
+  // AI 의도 분류
+  let intent;
+  try {
+    const r = await fetch("/api/intent", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, has_element: false, has_html: !!state.generatedHtml, element: null, image_url: _imgUrl }),
+    });
+    intent = await r.json();
+  } catch (e) { intent = { action: "edit", scope: "page", op: "none" }; }
+  console.log("[intent]", JSON.stringify(intent));
+
+  if (intent.action === "ask") { await sendMessageV2(message, displayMessage, null, "ask"); return; }
+  if (intent.action === "generate" || intent.action === "new_page") { await sendMessageV2(message, displayMessage, null, "generate"); return; }
   if (intent.scope === "site") { await sendMessageV2(message, displayMessage, null, "edit"); return; }
-  // 페이지 일부 편집/삭제 → diff 소스 편집(첨부 이미지 URL 전달), 실패 시 전체 편집 폴백
+  // 페이지 일부 편집/삭제 → diff 소스 편집, 실패 시 전체 편집 폴백
   const handled = await tryDiffEdit(message, _imgUrl);
   if (_imgUrl && handled) clearUploadedImages();
-  if (!handled) await sendMessageV2(message, displayMessage, elInfo || null);
+  if (!handled) await sendMessageV2(message, displayMessage, null);
 }
 
 // ── Diff 기반 소스 편집 (바이브코딩 방식: SEARCH/REPLACE 블록) ──
