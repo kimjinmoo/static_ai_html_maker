@@ -1093,6 +1093,7 @@ function applyPatchToPreview(patch, wgenId) {
       if (!e.data || e.data.type !== "wgen-patched") return;
       done = true;
       window.removeEventListener("message", onMsg);
+      console.log("[fast-edit] iframe responded ok =", e.data.ok, "htmlLen =", (e.data.html || "").length);
       if (!e.data.ok || !e.data.html) { resolve(false); return; }
       const html = e.data.html;
       const path = state.currentViewPath || "index.html";
@@ -1108,8 +1109,9 @@ function applyPatchToPreview(patch, wgenId) {
       resolve(true);
     }
     window.addEventListener("message", onMsg);
+    console.log("[fast-edit] → iframe wgen-apply-patch", JSON.stringify(patch).slice(0, 120));
     frame.contentWindow.postMessage({ type: "wgen-apply-patch", wgenId, patch }, "*");
-    setTimeout(() => { if (!done) { window.removeEventListener("message", onMsg); resolve(false); } }, 3000);
+    setTimeout(() => { if (!done) { console.warn("[fast-edit] iframe patch TIMEOUT (no response)"); window.removeEventListener("message", onMsg); resolve(false); } }, 3000);
   });
 }
 
@@ -1136,9 +1138,14 @@ async function tryFastEdit(message, elInfo) {
       patch = await r2.json();
     } catch (e) { /* keep complex */ }
   }
-  if (!patch || patch.op === "complex") return false;
+  console.log("[fast-edit] patch =", JSON.stringify(patch), "wgen_id =", elInfo.wgen_id);
+  if (!patch || patch.op === "complex") { console.warn("[fast-edit] complex/no-patch → fallback"); return false; }
   const ok = await applyPatchToPreview(patch, elInfo.wgen_id);
-  if (!ok) return false;
+  console.log("[fast-edit] applyPatchToPreview ok =", ok);
+  if (!ok) {
+    addMessage("messages", "assistant", "⚠️ 선택 요소에 패치를 적용하지 못했습니다(미리보기에서 요소를 다시 선택해 주세요). 콘솔 로그(F12)를 확인해 주세요.");
+    return true; // 전체 재생성 방지 — 안내만
+  }
   const label = _PATCH_LABEL[patch.op] || "수정";
   addMessage("messages", "assistant", `⚡ 빠른 수정 완료 (${label}) — 선택 요소만 변경, 전체 디자인 유지.`);
   state.chatHistory.push({ role: "assistant", content: `${label} 완료` });
@@ -1289,8 +1296,10 @@ async function sendMessage() {
   // 규칙: 요소가 선택돼 있으면 "그 요소만" 수정한다. 페이지 전체 변경은
   // 요청에 '전체/전부/모두/사이트' 등 전역 의도가 명시됐을 때만.
   const _wantsWhole = /전체|전부|모두|싹\s*다|페이지\s*전체|사이트|whole|entire|(^|\s)all(\s|$)/i.test(message);
+  console.log("[route] selectedElement =", !!state.selectedElement, "wgen_id =", state.selectedElement && state.selectedElement.wgen_id, "wantsWhole =", _wantsWhole, "msg =", message);
 
   if (state.selectedElement && !_wantsWhole) {
+    console.log("[route] → fast-edit (element-scoped)");
     const handled = await tryFastEdit(message, state.selectedElement);
     state.selectedElement = null;
     state.pendingElementAction = false;
