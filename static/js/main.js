@@ -1363,6 +1363,49 @@ const SECTION_TEMPLATES = [
   },
 ];
 
+// 네비게이션 메뉴 항목 결정적 추가 (마지막 nav-link 뒤, 없으면 nav-menu 안)
+function _extractMenuName(message) {
+  const q = message.match(/["'“「]([^"'”」]{1,40})["'”」]/);
+  if (q) return q[1].trim();
+  let m = " " + message + " ";
+  m = m.replace(/(메뉴에|메뉴를|메뉴|네비게이션|네비|nav)/gi, " ");
+  m = m.replace(/(추가해줘|추가해|추가|넣어줘|넣어|만들어줘|만들어|삽입해|삽입|해줘|해|에)/g, " ");
+  m = m.replace(/\s+/g, " ").trim();
+  return m || "새 메뉴";
+}
+function addNavMenu(name) {
+  let html = state.generatedHtml;
+  if (!html) { addMessage("messages", "assistant", "⚠️ 먼저 페이지를 생성해 주세요."); return false; }
+  const link = `<a href="javascript:void(0)" class="nav-link">${name}</a>`;
+  const re = /<a\b[^>]*class="[^"]*\bnav-link\b[^"]*"[^>]*>[\s\S]*?<\/a>/gi;
+  let last = null, m;
+  while ((m = re.exec(html))) last = m;
+  if (last) {
+    const idx = last.index + last[0].length;
+    html = html.slice(0, idx) + "\n          " + link + html.slice(idx);
+  } else {
+    const nm = html.search(/class="[^"]*\bnav-menu\b[^"]*"/i);
+    if (nm === -1) { addMessage("messages", "assistant", "⚠️ 네비게이션(메뉴)을 찾지 못했습니다. 멀티페이지로 생성하면 메뉴가 생깁니다."); return false; }
+    const open = html.indexOf(">", nm);
+    html = html.slice(0, open + 1) + "\n          " + link + html.slice(open + 1);
+  }
+  state.generatedHtml = html;
+  updatePreview(html, false);
+  const path = state.currentViewPath || "index.html";
+  if (path !== "index.html") state.multiPageHtmls[path] = html;
+  if (state.currentProjectId) {
+    fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, content: html }),
+    }).then(() => loadFileTree(state.currentProjectId)).catch(() => {});
+  }
+  addMessage("messages", "assistant", `🧭 메뉴 "${name}"을(를) 네비게이션에 추가했습니다. (메뉴를 선택해 링크를 연결하거나 이름을 바꿀 수 있어요)`);
+  state.chatHistory.push({ role: "assistant", content: `메뉴 ${name} 추가` });
+  saveProject();
+  enableReviewBtn();
+  return true;
+}
+
 function findSectionTemplate(message) {
   // 삽입/생성 의도가 있을 때만
   if (!/추가|넣어|넣어줘|만들|삽입|생성|붙여|줘|해줘|템플릿/i.test(message)) return null;
@@ -1376,6 +1419,12 @@ async function routeByIntent(message, displayMessage, elInfo) {
   const _imgUrl = _lastImg ? _lastImg.url : "";
   const _wantsWhole = /전체|전부|모두|싹\s*다|페이지\s*전체|사이트|whole|entire|(^|\s)all(\s|$)/i.test(message);
   const _redesign = /리팩토링|리팩터|재구성|갈아엎|새로\s*디자인|다시\s*디자인|디자인\s*(새로|다시|갈아|바꿔|변경|개선|리뉴얼)|처음부터|전체\s*디자인|새롭게|리뉴얼|refactor|redesign/i.test(message);
+
+  // 메뉴(네비) 항목 추가 → 결정적 nav-link 삽입 (선택 무관)
+  if (/메뉴|네비|nav/i.test(message) && /추가|넣어|만들|삽입/i.test(message) && state.generatedHtml) {
+    console.log("[intent] add nav menu");
+    if (addNavMenu(_extractMenuName(message))) return;
+  }
 
   // ── 요소 선택 시: '전체' 명시가 없으면 무조건 그 요소만 변경 (절대 전체 재생성/diff 안 함) ──
   if (elInfo && !_wantsWhole) {
