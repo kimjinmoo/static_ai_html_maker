@@ -1930,6 +1930,9 @@ function showSelectedElementBar(d) {
   if (!bar || !label) return;
   const tag = `<${d.tag}${d.id ? ` id="${d.id}"` : ""}${d.classes ? ` class="${d.classes}"` : ""}>`;
   label.textContent = `\ud83c\udfaf ${tag} ${d.text ? `\u2014 "${d.text.slice(0, 30)}${d.text.length > 30 ? "..." : ""}"` : ""}`;
+  const hint = document.getElementById("selected-element-hint");
+  if (hint) hint.classList.remove("hidden");
+  if (el.userInput) el.userInput.placeholder = "\uc218\uc815 \uc694\uccad \uc785\ub825 (\ub610\ub294 \u2328\ufe0f Delete \ud0a4\ub85c \uc0ad\uc81c)";
   bar.classList.remove("hidden");
 }
 

@@ -2646,3 +2646,12 @@ body {
   text-align: left;
 }
 .btn-sidebar-settings:hover { border-color: var(--accent, #6366f1); background: var(--bg-hover, #2a2a2a); }
+
+/* 선택 요소 바 — Delete 안내 힌트 */
+.selected-element-hint {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.selected-element-hint.hidden { display: none; }
