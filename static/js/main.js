@@ -1413,6 +1413,56 @@ function findSectionTemplate(message) {
   return null;
 }
 
+// 선택 요소(메뉴/링크)를 새 서브 페이지로 생성 + 링크 연결 (AI 생성)
+async function createSubPageFromElement(elInfo, message) {
+  const linkText = (elInfo.text || "새 페이지").trim();
+  let slug = linkText.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  slug = (slug || "page") + "-" + Date.now().toString(36).slice(-3);
+  state.pendingPageName = slug + ".html";
+  state.pendingMainHtml = state.generatedHtml;
+  state.pendingLinkTextValue = linkText;
+  state.pendingLinkHrefValue = elInfo.linkHref || "#";
+  await sendMessageAuto(message);
+}
+
+// 현재 페이지에 섹션 추가 + 선택 메뉴를 #앵커로 연결 (결정적)
+function addMenuSection(elInfo) {
+  const title = (elInfo.text || "섹션").trim();
+  let base = title.toLowerCase().replace(/[^a-z0-9가-힣]+/g, "-").replace(/^-|-$/g, "");
+  const slug = (base || "sec") + "-" + Date.now().toString(36).slice(-3);
+  let html = state.generatedHtml;
+  // 메뉴 링크(텍스트 일치)를 #slug로 연결
+  if (title) {
+    const esc = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(<a\\b[^>]*?)(?:\\s+href="[^"]*")?([^>]*>)\\s*${esc}\\s*(</a>)`, "i");
+    if (re.test(html)) html = html.replace(re, (m, pre, post, close) => `${pre} href="#${slug}"${post}${title}${close}`);
+    state.generatedHtml = html;
+  }
+  const section = `<section id="${slug}" class="section" data-animate><div class="container"><div class="section-header"><span class="section-label">SECTION</span><h2 class="section-title">${title}</h2></div><p class="text-center text-secondary">${title} 섹션 내용을 입력하세요. (요소를 선택해 수정)</p></div></section>`;
+  return _insertSection(section, `"${title}" 섹션`);
+}
+
+// 새 페이지 vs 섹션 추가 선택지 제시 (버튼)
+function askPageOrSection(elInfo, message) {
+  window._pendingPageReq = { elInfo, message };
+  const div = addMessage("messages", "assistant", "");
+  div.innerHTML = `🤔 "<b>${(elInfo.text || "이 항목").slice(0, 20)}</b>"(으)로 무엇을 만들까요?<br><br>` +
+    `<button class="btn-choice" onclick="window._choosePage()">🆕 새 페이지 생성</button> ` +
+    `<button class="btn-choice" onclick="window._chooseSection()">➕ 현재 페이지에 섹션 추가</button>` +
+    `<br><span style="font-size:12px;color:var(--text-muted,#888)">※ "신규 페이지"라고 말하면 묻지 않고 바로 새 페이지를 만듭니다.</span>`;
+  scrollToBottom("messages");
+}
+window._choosePage = async function () {
+  const r = window._pendingPageReq; if (!r) return;
+  window._pendingPageReq = null;
+  await createSubPageFromElement(r.elInfo, r.message);
+};
+window._chooseSection = function () {
+  const r = window._pendingPageReq; if (!r) return;
+  window._pendingPageReq = null;
+  addMenuSection(r.elInfo);
+};
+
 // AI 의도 분류 기반 라우팅 — 채팅 문장을 AI가 이해해 결정적으로 분기한다.
 async function routeByIntent(message, displayMessage, elInfo) {
   const _lastImg = state.uploadedImages.length ? state.uploadedImages[state.uploadedImages.length - 1] : null;
@@ -1420,18 +1470,13 @@ async function routeByIntent(message, displayMessage, elInfo) {
   const _wantsWhole = /전체|전부|모두|싹\s*다|페이지\s*전체|사이트|whole|entire|(^|\s)all(\s|$)/i.test(message);
   const _redesign = /리팩토링|리팩터|재구성|갈아엎|새로\s*디자인|다시\s*디자인|디자인\s*(새로|다시|갈아|바꿔|변경|개선|리뉴얼)|처음부터|전체\s*디자인|새롭게|리뉴얼|refactor|redesign/i.test(message);
 
-  // 새 페이지 생성 의도 ("(이 링크/메뉴) 페이지 만들어줘") — 메뉴추가보다 우선
-  const _newPage = /(하위|서브|새|신규)?\s*페이지\s*(를)?\s*(만들|생성|추가|연결)/i.test(message) || /페이지\s*(만들어|생성해|추가해)/i.test(message);
-  if (_newPage && elInfo && state.generatedHtml) {
-    const linkText = (elInfo.text || "새 페이지").trim();
-    let slug = linkText.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    slug = (slug || "page") + "-" + Date.now().toString(36).slice(-3);
-    state.pendingPageName = slug + ".html";
-    state.pendingMainHtml = state.generatedHtml;
-    state.pendingLinkTextValue = linkText;
-    state.pendingLinkHrefValue = elInfo.linkHref || "#";
-    console.log("[intent] new sub-page from element →", state.pendingPageName);
-    await sendMessageAuto(message);
+  // 페이지 만들기 의도 + 요소 선택 → 새 페이지 vs 섹션 추가 선택 (신규 명시면 바로 새 페이지)
+  const _pageMake = /페이지\s*(를)?\s*(만들|생성|연결)/i.test(message) || /페이지\s*(만들어|생성해)/i.test(message);
+  const _explicitNew = /신규|새\s*(페이지|html|화면|장)|새로운\s*페이지|별도\s*페이지|new\s*page/i.test(message);
+  if (_pageMake && elInfo && state.generatedHtml) {
+    if (_explicitNew) { console.log("[intent] explicit new sub-page"); await createSubPageFromElement(elInfo, message); return; }
+    console.log("[intent] ask: new page or section");
+    askPageOrSection(elInfo, message);
     return;
   }
 

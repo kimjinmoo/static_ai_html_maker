@@ -2617,3 +2617,17 @@ body {
 .generating-speed {
   font-size: 0.8rem; color: var(--accent, #6366f1); font-variant-numeric: tabular-nums;
 }
+
+/* 선택지 버튼 (새 페이지 vs 섹션) */
+.btn-choice {
+  display: inline-block;
+  background: var(--accent, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  margin: 4px 4px 4px 0;
+}
+.btn-choice:hover { background: var(--accent-hover, #818cf8); }
