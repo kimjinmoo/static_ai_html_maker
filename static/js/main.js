@@ -590,7 +590,7 @@ var devMode=${state.devMode};
 var sty=document.getElementById("wgen-style")||function(){var s=document.createElement("style");s.id="wgen-style";s.textContent="img{max-width:100%;height:auto}body.wgen-devmode{cursor:crosshair!important}body.wgen-devmode .wgen-selected{outline:3px solid #6c5ce7!important;outline-offset:2px;cursor:pointer!important}body.wgen-devmode .wgen-hover{outline:2px dashed #00cec9!important;outline-offset:1px;cursor:pointer!important}";document.head.appendChild(s);return s}();
 function applyDevMode(v){var b=document.body;if(b)b.classList.toggle("wgen-devmode",v)};
 var _dm=devMode;applyDevMode(_dm);if(!document.body)document.addEventListener("DOMContentLoaded",function(){applyDevMode(_dm)});
-window.addEventListener("message",function(e){if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;applyDevMode(devMode);if(!devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}}else if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}else if(e.data&&e.data.type==="wgen-apply-patch"){var _p=e.data.patch||{},_wid=e.data.wgenId,_n=_wid?document.querySelector('[data-wgen-id="'+_wid+'"]'):null;if(!_n)_n=el;var _ok=false;if(_n){try{if(_p.op==="delete"){_n.remove();_ok=true}else if(_p.op==="text"){if(_p.text!=null){_n.textContent=_p.text;_ok=true}}else if(_p.op==="href"){_n.setAttribute("href",_p.href||"#");_ok=true}else if(_p.op==="src"){var _im=_n.tagName==="IMG"?_n:_n.querySelector("img");if(_im){_im.setAttribute("src",_p.src||"");_ok=true}}else if(_p.op==="style"){var _st=_p.styles||{};for(var _k in _st){_n.style.setProperty(_k,_st[_k],"important")}_ok=true}else if(_p.op==="html"){if(_p.html){_n.outerHTML=_p.html;_ok=true}}else if(_p.op==="insert"){if(_p.html){_n.insertAdjacentHTML(_p.position==="before"?"beforebegin":"afterend",_p.html);_ok=true}}else if(_p.op==="align"){var _a=_p.value||"center";_n.style.setProperty("text-align",_a,"important");_n.querySelectorAll("h1,h2,h3,h4,h5,h6,p,span,a,button,li,blockquote,figcaption,label,.section-header,.section-title,.section-subtitle,.hero-content,.hero-title,.hero-subtitle,.card,.card-title,.card-text").forEach(function(c){c.style.setProperty("text-align",_a,"important")});var _ml=_a==="left"?"0":"auto",_mr=_a==="right"?"0":"auto";_n.querySelectorAll(".container,.card,.hero-content,.section-header,figure,img,.btn,blockquote,.pricing-card,.testimonial").forEach(function(c){var d="";try{d=getComputedStyle(c).display}catch(_x){}if(d!=="inline"&&d.indexOf("inline-")!==0){c.style.setProperty("margin-left",_ml,"important");c.style.setProperty("margin-right",_mr,"important")}});if(_a==="center"){_n.querySelectorAll(".grid,[class*=grid],.row,ul,ol,.hero-actions,.cta,.section-header").forEach(function(c){c.style.setProperty("justify-content","center","important");c.style.setProperty("justify-items","center","important")})}_ok=true}}catch(_er){_ok=false}}if(_p.op==="delete-multi"){try{(_p.ids||[]).forEach(function(id){var dn=document.querySelector('[data-wgen-id="'+id+'"]');if(dn)dn.remove()});_ok=true}catch(_e3){_ok=false}}var _html="";try{var _root=document.documentElement.cloneNode(true);_root.querySelectorAll("#wgen-interaction,#wgen-error-catcher,#wgen-style,#wgen-reveal,#wgen-base").forEach(function(x){x.remove()});_root.querySelectorAll("[data-wgen-id]").forEach(function(x){x.removeAttribute("data-wgen-id")});_root.querySelectorAll(".wgen-hover,.wgen-selected").forEach(function(x){x.classList.remove("wgen-hover");x.classList.remove("wgen-selected")});var _b=_root.querySelector("body");if(_b)_b.classList.remove("wgen-devmode");_html="<!DOCTYPE html>\\n"+_root.outerHTML}catch(_e2){_html=""}window.parent.postMessage({type:"wgen-patched",ok:_ok&&!!_html,html:_html},"*")}});
+window.addEventListener("message",function(e){if(e.data&&e.data.type==="set-dev-mode"){devMode=e.data.enabled;applyDevMode(devMode);if(!devMode){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}}else if(e.data&&e.data.type==="deselect"){document.querySelectorAll(".wgen-selected").forEach(function(e){e.classList.remove("wgen-selected")});document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});el=null}else if(e.data&&e.data.type==="wgen-apply-patch"){var _p=e.data.patch||{},_wid=e.data.wgenId,_n=_wid?document.querySelector('[data-wgen-id="'+_wid+'"]'):null;if(!_n)_n=el;var _ok=false;if(_n){try{if(_p.op==="delete"){_n.remove();_ok=true}else if(_p.op==="text"){if(_p.text!=null){_n.textContent=_p.text;_ok=true}}else if(_p.op==="href"){_n.setAttribute("href",_p.href||"#");_ok=true}else if(_p.op==="src"){var _im=_n.tagName==="IMG"?_n:_n.querySelector("img");if(_im){_im.setAttribute("src",_p.src||"");_ok=true}}else if(_p.op==="style"){var _st=_p.styles||{};for(var _k in _st){_n.style.setProperty(_k,_st[_k],"important")}_ok=true}else if(_p.op==="html"){if(_p.html){_n.outerHTML=_p.html;_ok=true}}else if(_p.op==="insert"){if(_p.html){_n.insertAdjacentHTML(_p.position==="before"?"beforebegin":"afterend",_p.html);_ok=true}}else if(_p.op==="align"){var _a=_p.value||"center";_n.style.setProperty("text-align",_a,"important");_n.querySelectorAll("h1,h2,h3,h4,h5,h6,p,span,a,button,li,blockquote,figcaption,label,.section-header,.section-title,.section-subtitle,.hero-content,.hero-title,.hero-subtitle,.card,.card-title,.card-text").forEach(function(c){c.style.setProperty("text-align",_a,"important")});var _ml=_a==="left"?"0":"auto",_mr=_a==="right"?"0":"auto";_n.querySelectorAll(".container,.card,.hero-content,.section-header,figure,img,.btn,blockquote,.pricing-card,.testimonial").forEach(function(c){var d="";try{d=getComputedStyle(c).display}catch(_x){}if(d!=="inline"&&d.indexOf("inline-")!==0){c.style.setProperty("margin-left",_ml,"important");c.style.setProperty("margin-right",_mr,"important")}});if(_a==="center"){_n.querySelectorAll(".grid,[class*=grid],.row,ul,ol,.hero-actions,.cta,.section-header").forEach(function(c){c.style.setProperty("justify-content","center","important");c.style.setProperty("justify-items","center","important")})}_ok=true}}catch(_er){_ok=false}}if(_ok&&_p.also){try{document.querySelectorAll(_p.also).forEach(function(x){if(x===_n)return;if(_p.op==="style"){var s=_p.styles||{};for(var k in s)x.style.setProperty(k,s[k],"important")}else if(_p.op==="delete"){x.remove()}else if(_p.op==="text"){if(_p.text!=null)x.textContent=_p.text}else if(_p.op==="href"){x.setAttribute("href",_p.href||"#")}else if(_p.op==="src"){var im=x.tagName==="IMG"?x:x.querySelector("img");if(im)im.setAttribute("src",_p.src||"")}else if(_p.op==="align"){x.style.setProperty("text-align",_p.value||"center","important")}})}catch(_ea){}}if(_p.op==="delete-multi"){try{(_p.ids||[]).forEach(function(id){var dn=document.querySelector('[data-wgen-id="'+id+'"]');if(dn)dn.remove()});_ok=true}catch(_e3){_ok=false}}var _html="";try{var _root=document.documentElement.cloneNode(true);_root.querySelectorAll("#wgen-interaction,#wgen-error-catcher,#wgen-style,#wgen-reveal,#wgen-base").forEach(function(x){x.remove()});_root.querySelectorAll("[data-wgen-id]").forEach(function(x){x.removeAttribute("data-wgen-id")});_root.querySelectorAll(".wgen-hover,.wgen-selected").forEach(function(x){x.classList.remove("wgen-hover");x.classList.remove("wgen-selected")});var _b=_root.querySelector("body");if(_b)_b.classList.remove("wgen-devmode");_html="<!DOCTYPE html>\\n"+_root.outerHTML}catch(_e2){_html=""}window.parent.postMessage({type:"wgen-patched",ok:_ok&&!!_html,html:_html},"*")}});
 document.addEventListener("mouseover",function(e){if(!devMode||e.target.tagName==="BODY"||e.target.tagName==="HTML"||el===e.target)return;document.querySelectorAll(".wgen-hover").forEach(function(e){e.classList.remove("wgen-hover")});e.target.classList.add("wgen-hover")});
 document.addEventListener("mouseout",function(e){if(!devMode)return;if(el!==e.target)e.target.classList.remove("wgen-hover")});
 var _lpT=null,_lpX=0,_lpY=0,_lpFired=false,_multi=[];
@@ -1555,6 +1555,27 @@ async function deleteMultiSelected() {
   return true;
 }
 
+// 메시지에서 '지명된 다른 요소' 셀렉터 추출 — 선택 요소와 함께 변경할 대상
+const _NAMED_TARGETS = [
+  [/제목|타이틀|title/i, "h1,h2,h3,.hero-title,.section-title,.card-title"],
+  [/부제목|서브\s*타이틀|subtitle/i, ".hero-subtitle,.section-subtitle"],
+  [/버튼|button|btn/i, ".btn,button,a.btn"],
+  [/이미지|사진|그림|image|img/i, "img"],
+  [/카드|card/i, ".card"],
+  [/메뉴|네비|nav/i, ".nav-link"],
+  [/가격|요금|price/i, ".pricing-price,.pricing-card"],
+  [/아이콘|icon/i, "i,.icon,svg"],
+  [/문단|본문|단락|paragraph/i, "p"],
+  [/링크|link/i, "a"],
+];
+function _alsoSelectors(message) {
+  // "○○도", "○○랑", "○○과", "○○와", "○○ 같이/함께" 처럼 추가 대상을 지명할 때만
+  if (!/(도|랑|이랑|과|와|같이|함께|모든|전부\s*의|모두)/.test(message)) return "";
+  const sels = [];
+  for (const [re, sel] of _NAMED_TARGETS) { if (re.test(message)) sels.push(sel); }
+  return sels.join(",");
+}
+
 // AI 의도 분류 기반 라우팅 — 채팅 문장을 AI가 이해해 결정적으로 분기한다.
 async function routeByIntent(message, displayMessage, elInfo) {
   // 멀티 선택 + 삭제 → 일괄 삭제
@@ -1586,6 +1607,9 @@ async function routeByIntent(message, displayMessage, elInfo) {
 
   // ── 요소 선택 시: '전체' 명시가 없으면 무조건 그 요소만 변경 (절대 전체 재생성/diff 안 함) ──
   if (elInfo && !_wantsWhole) {
+    // 메시지가 다른 요소를 지명했으면("버튼도", "제목이랑") 그 요소들에도 같이 적용
+    const _also = _alsoSelectors(message) || undefined;
+    if (_also) console.log("[intent] also-targets:", _also);
     // -1) "추가/넣어/삽입" → 선택 위치(요소 인접)에 섹션 템플릿 또는 새 요소 삽입
     if (/추가|넣어|넣어줘|삽입|붙여/i.test(message)) {
       const pos = _insertPosition(message);
@@ -1624,7 +1648,7 @@ async function routeByIntent(message, displayMessage, elInfo) {
         const styles = {};
         sides.forEach(s => { styles[`${prop}-${s}`] = val; });
         console.log("[intent] spacing", prop, val, sides);
-        await execElementPatch({ op: "style", styles }, elInfo);
+        await execElementPatch({ op: "style", styles, also: _also }, elInfo);
         return;
       }
     }
@@ -1638,7 +1662,7 @@ async function routeByIntent(message, displayMessage, elInfo) {
       if (_isBig) {
         // 큰 레이아웃 요소: 내부 콘텐츠 전체(자손 텍스트 요소)를 정렬
         console.log("[intent] section align (deep)", _align);
-        await execElementPatch({ op: "align", value: _align }, elInfo);
+        await execElementPatch({ op: "align", value: _align, also: _also }, elInfo);
         return;
       }
       let styles;
@@ -1650,7 +1674,7 @@ async function routeByIntent(message, displayMessage, elInfo) {
         styles = { "display": "block", "margin-left": "auto", "margin-right": "0", "width": "fit-content" };
       }
       console.log("[intent] element align", _align, "big=", _isBig);
-      await execElementPatch({ op: "style", styles }, elInfo);
+      await execElementPatch({ op: "style", styles, also: _also }, elInfo);
       return;
     }
     // 0) 이미지로 변경/교체 → img 요소면 src 교체, 아니면 요소를 <img>로 치환 (결정적)
@@ -1671,7 +1695,7 @@ async function routeByIntent(message, displayMessage, elInfo) {
     }
     // 1) 고신뢰 휴리스틱 (텍스트/색/삭제 등 — 이미지 변경/삽입은 위에서 처리됨)
     const lp = tryLocalPatch(message, elInfo);
-    if (lp) { console.log("[intent] local fast-patch", JSON.stringify(lp)); await execElementPatch(lp, elInfo); return; }
+    if (lp) { if (_also) lp.also = _also; console.log("[intent] local fast-patch", JSON.stringify(lp)); await execElementPatch(lp, elInfo); return; }
     // 2) AI 의도로 op/value만 얻고 scope는 element로 강제
     let intent;
     try {
