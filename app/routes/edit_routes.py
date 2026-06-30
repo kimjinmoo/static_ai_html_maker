@@ -40,6 +40,7 @@ def _build_prompt(message, el, design_section="", force_html=False, image_url=""
 ## 규칙
 - 반드시 op="html". 같은 태그로 시작하는 이 요소의 새 outerHTML만 "html"에 담으세요.
 - 위 디자인 참고의 scaffold 클래스를 사용하고, 색/폰트는 하드코딩하지 말고 기존 디자인을 따르세요.
+- 화면에 보이는 텍스트는 **한국어**로 작성하세요(사용자가 다른 언어 명시 시 제외).
 - 이 요소 범위만. 페이지 전체·다른 요소 금지. 마크다운 코드블록 금지."""
     return f"""선택된 HTML 요소 **하나만** 변경하는 최소 JSON 패치를 만드세요. 다른 요소·전체 레이아웃은 절대 건드리지 마세요.
 
@@ -63,6 +64,7 @@ def _build_prompt(message, el, design_section="", force_html=False, image_url=""
 - op="complex": **다른 요소까지** 함께 바꿔야 하거나 형제/부모 구조 변경이 필요한 경우에만.
 
 **디자인 요청은 거의 항상 op="style" 또는 op="html"로 처리 가능합니다. op="complex"는 정말 다른 요소가 얽힐 때만 쓰세요.**
+- 새 텍스트(op=text의 value, op=html의 화면 문구)는 **한국어**로 작성하세요(다른 언어 명시 시 제외).
 필요한 키만 포함. 최소 JSON. 마크다운 코드블록 금지."""
 
 
@@ -208,6 +210,7 @@ def _build_diff_prompt(message, html, design_section, image_url=""):
 ## 규칙
 - SEARCH 스니펫은 현재 HTML에 **정확히 1번만** 나타나도록 충분한 앞뒤 맥락을 포함하세요.
 - 기존 디자인/클래스/구조를 최대한 유지하세요.
+- 새로 작성하거나 변경하는 **화면 텍스트는 한국어**로 쓰세요(사용자가 다른 언어를 명시하지 않는 한). 클래스명·속성은 영어 유지.
 - 마크다운 코드펜스(```) 금지. 오직 블록만.
 
 ## 디자인 참고

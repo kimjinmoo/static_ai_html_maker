@@ -7,6 +7,15 @@ from app.prompts import CONTENT_ONLY_PROMPT, SYSTEM_PROMPT
 
 HISTORY_TURNS = 5
 
+# 사용자가 다른 언어를 명시하지 않는 한 모든 화면 텍스트는 한국어가 기본
+KOREAN_RULE = (
+    "## 언어 규칙 (필수)\n"
+    "- 사용자에게 보이는 모든 텍스트(제목, 문구, 버튼/링크 라벨, 메뉴, 설명, 푸터 등)는 "
+    "**반드시 한국어**로 작성하세요.\n"
+    "- HTML 태그명, CSS 클래스명, 속성(class/href/src 등), 코드는 영어 그대로 두세요.\n"
+    "- 사용자가 영어 등 다른 언어를 명시적으로 요청한 경우에만 그 언어를 사용하세요. 기본값은 한국어입니다."
+)
+
 
 class Mode(str, Enum):
     ASK = "ask"
@@ -16,7 +25,7 @@ class Mode(str, Enum):
 
 
 def _design_system_prompt(ds):
-    return CONTENT_ONLY_PROMPT + "\n\n" + ds.design_prompt_section()
+    return CONTENT_ONLY_PROMPT + "\n\n" + KOREAN_RULE + "\n\n" + ds.design_prompt_section()
 
 
 def build_generation_prompt(ds, mode, user_message, history=None,
@@ -30,7 +39,7 @@ def build_generation_prompt(ds, mode, user_message, history=None,
     history = history or []
 
     if mode in (Mode.EDIT, Mode.DELETE):
-        system = SYSTEM_PROMPT + "\n\n" + ds.design_prompt_section()
+        system = SYSTEM_PROMPT + "\n\n" + KOREAN_RULE + "\n\n" + ds.design_prompt_section()
         user = _build_edit_user_message(mode, user_message, current_html, element_context)
     else:  # GENERATE
         system = _design_system_prompt(ds)
