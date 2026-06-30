@@ -1373,11 +1373,20 @@ async function routeByIntent(message, displayMessage, elInfo) {
       : /(왼쪽|좌측|left)/i.test(message) ? "left"
         : /(오른쪽|우측|right)/i.test(message) ? "right" : null;
     if (_align && /(정렬|align|배치|맞춰|놓|중앙|가운데|센터|왼쪽|오른쪽)/i.test(message)) {
+      const _bigTags = ["section", "div", "main", "article", "header", "footer", "nav", "aside", "ul", "ol", "form", "figure", "table"];
+      const _isBig = _bigTags.includes((elInfo.tag || "").toLowerCase());
       let styles;
-      if (_align === "center") styles = { "display": "block", "margin-left": "auto", "margin-right": "auto", "width": "fit-content", "max-width": "100%", "text-align": "center" };
-      else if (_align === "left") styles = { "display": "block", "margin-left": "0", "margin-right": "auto", "width": "fit-content" };
-      else styles = { "display": "block", "margin-left": "auto", "margin-right": "0", "width": "fit-content" };
-      console.log("[intent] element align", _align);
+      if (_isBig) {
+        // 큰 레이아웃 요소: 폭 줄이지 말고 내부 콘텐츠만 정렬 (쪼그라든 경우 width 복구)
+        styles = { "text-align": _align, "width": "auto", "margin-left": "0", "margin-right": "0" };
+      } else if (_align === "center") {
+        styles = { "display": "block", "margin-left": "auto", "margin-right": "auto", "width": "fit-content", "max-width": "100%", "text-align": "center" };
+      } else if (_align === "left") {
+        styles = { "display": "block", "margin-left": "0", "margin-right": "auto", "width": "fit-content" };
+      } else {
+        styles = { "display": "block", "margin-left": "auto", "margin-right": "0", "width": "fit-content" };
+      }
+      console.log("[intent] element align", _align, "big=", _isBig);
       await execElementPatch({ op: "style", styles }, elInfo);
       return;
     }
