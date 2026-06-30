@@ -644,23 +644,18 @@ function updatePreview(html, isStreaming) {
     // <head>가 없으면 맨 앞에라도 주입 (data-animate 숨김 방지)
     processed = revealStyle + processed;
   }
+  // blob URL 네비게이션을 기본으로 — WebView2/pywebview에서 srcdoc 재설정이
+  // 이미 로드된 iframe을 안정적으로 다시 렌더하지 않는 문제(완료 후 흰색) 회피.
   try {
-    if (frame.srcdoc !== undefined) {
-      frame.srcdoc = processed;
-    } else {
-      const doc = frame.contentDocument || frame.contentWindow.document;
-      doc.open();
-      doc.write(processed);
-      doc.close();
-    }
+    const blob = new Blob([processed], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    if (frame._wgenUrl) { try { URL.revokeObjectURL(frame._wgenUrl); } catch (_) { } }
+    frame._wgenUrl = url;
+    frame.removeAttribute("srcdoc");
+    frame.src = url;
   } catch (e) {
-    console.warn("[preview] srcdoc failed, trying blob URL", e);
-    try {
-      const blob = new Blob([processed], { type: "text/html;charset=utf-8" });
-      frame.src = URL.createObjectURL(blob);
-    } catch (e2) {
-      console.error("[preview] all methods failed", e2);
-    }
+    try { frame.srcdoc = processed; }
+    catch (e2) { console.error("[preview] render failed", e2); }
   }
   frame.style.display = "block";
   frame.classList.remove("hidden");
