@@ -31,7 +31,7 @@ call .venv\Scripts\activate.bat
 
 REM Install core dependencies
 echo [3/3] Installing dependencies...
-pip install -q "flask==3.0.0" "markdown==3.5.1" "huggingface-hub>=0.20.0" "pywebview>=5.0"
+pip install -q "flask==3.0.0" "markdown==3.5.1" "huggingface-hub>=0.20.0" "pywebview>=5.0" "google-genai>=0.3.0"
 
 REM Install CUDA 12.x runtime DLLs (needed for pre-built CUDA wheel)
 pip install -q nvidia-cuda-runtime-cu12==12.4.127 nvidia-cublas-cu12 nvidia-cuda-nvrtc-cu12 nvidia-cufft-cu12 nvidia-curand-cu12 nvidia-cusolver-cu12 nvidia-cusparse-cu12 2>nul

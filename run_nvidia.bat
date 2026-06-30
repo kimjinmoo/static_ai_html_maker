@@ -22,7 +22,7 @@ call .venv-nvidia\Scripts\activate.bat
 
 REM Install core dependencies first (flask, etc.)
 echo [3/4] Installing core dependencies...
-pip install -q flask==3.0.0 markdown==3.5.1 "huggingface-hub>=0.20.0" "pywebview>=5.0"
+pip install -q flask==3.0.0 markdown==3.5.1 "huggingface-hub>=0.20.0" "pywebview>=5.0" "google-genai>=0.3.0"
 
 REM Install CUDA 12.x runtime DLLs via pip (compatible with CUDA 13.0 systems)
 echo Installing CUDA 12.x runtime libraries...

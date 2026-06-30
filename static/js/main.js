@@ -2641,7 +2641,16 @@ async function openSettingsModal() {
     document.getElementById("set-backend").value = s.llm_backend || "local";
     document.getElementById("set-ollama-host").value = s.ollama_host || "";
     document.getElementById("set-ollama-model").value = s.ollama_model || "";
-    document.getElementById("set-gemini-model").value = s.gemini_model || "";
+    // gemini 모델 select: 저장값이 옵션에 없으면 추가
+    const gm = document.getElementById("set-gemini-model");
+    if (gm && s.gemini_model) {
+      if (![...gm.options].some(o => o.value === s.gemini_model)) {
+        const opt = document.createElement("option");
+        opt.value = s.gemini_model; opt.textContent = s.gemini_model + " (현재)";
+        gm.insertBefore(opt, gm.firstChild);
+      }
+      gm.value = s.gemini_model;
+    }
     document.getElementById("set-model-path").value = s.model_path || "";
     const keyField = document.getElementById("set-gemini-key");
     keyField.value = "";

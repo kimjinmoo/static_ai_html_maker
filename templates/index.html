@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebGen AI - 홈페이지 마법사</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=multisel1" />
+    <link rel="stylesheet" href="/static/css/style.css?v=gemmodels1" />
   </head>
   <body>
     <div class="app-container">
@@ -743,7 +743,16 @@
             </div>
             <div class="setting-row">
               <label class="setting-label" for="set-gemini-model">Gemini 모델</label>
-              <input id="set-gemini-model" class="setting-input" type="text" placeholder="gemini-2.5-flash" />
+              <select id="set-gemini-model" class="setting-input">
+                <option value="gemini-2.5-flash">gemini-2.5-flash (빠름·기본)</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro (고품질)</option>
+                <option value="gemini-3.5-flash">gemini-3.5-flash ✨ AI Pro 전용</option>
+                <option value="gemini-3.1-flash">gemini-3.1-flash ✨ AI Pro 전용</option>
+                <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite ✨ AI Pro 전용</option>
+              </select>
+            </div>
+            <div class="setting-row" style="margin-top:-6px">
+              <span style="font-size:12px;color:var(--text-muted,#888)">✨ 표시 모델은 Google AI Pro 구독자용입니다. 무료 등급은 2.5-flash 권장.</span>
             </div>
           </div>
 
@@ -789,6 +798,6 @@
       </div>
     </div>
 
-    <script src="/static/js/main.js?v=multisel1"></script>
+    <script src="/static/js/main.js?v=gemmodels1"></script>
   </body>
 </html>

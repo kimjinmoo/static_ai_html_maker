@@ -31,7 +31,7 @@ call .venv-amd\Scripts\activate.bat
 
 REM Install core dependencies first (flask, etc.)
 echo [3/4] Installing core dependencies...
-pip install -q flask==3.0.0 markdown==3.5.1 "huggingface-hub>=0.20.0" "pywebview>=5.0"
+pip install -q flask==3.0.0 markdown==3.5.1 "huggingface-hub>=0.20.0" "pywebview>=5.0" "google-genai>=0.3.0"
 
 REM Install llama-cpp-python with Vulkan support
 REM Use a short TMP path to avoid Windows MAX_PATH (260 char) limit during source build
