@@ -1162,6 +1162,37 @@ async function execElementPatch(patch, elInfo) {
   return true;
 }
 
+// 업로드 이미지를 갤러리 섹션으로 결정적 삽입 (AI 미사용 → 확실히 적용)
+function insertImageGallery(images) {
+  let html = state.generatedHtml;
+  if (!html || !images.length) { addMessage("messages", "assistant", "⚠️ 삽입할 페이지/이미지가 없습니다."); return false; }
+  const cols = Math.min(images.length, 3);
+  const cards = images.map(im =>
+    `<div class="card"><img src="${im.url}" alt="${(im.name || 'image').replace(/"/g, '')}" style="max-width:100%;height:auto;display:block;border-radius:8px" /></div>`
+  ).join("\n        ");
+  const section =
+    `\n<section class="section section-tinted" data-animate>\n  <div class="container">\n    <div class="grid grid-${cols}">\n        ${cards}\n    </div>\n  </div>\n</section>\n`;
+  // 푸터 앞 → 없으면 </body> 앞 → 없으면 끝
+  let idx = html.search(/<footer[\s>]/i);
+  if (idx === -1) { const b = html.toLowerCase().lastIndexOf("</body>"); idx = b !== -1 ? b : html.length; }
+  html = html.slice(0, idx) + section + html.slice(idx);
+  state.generatedHtml = html;
+  updatePreview(html, false);
+  const path = state.currentViewPath || "index.html";
+  if (path !== "index.html") state.multiPageHtmls[path] = html;
+  if (state.currentProjectId) {
+    fetch(`/api/projects/${state.currentProjectId}/save_file`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, content: html }),
+    }).then(() => loadFileTree(state.currentProjectId)).catch(() => {});
+  }
+  addMessage("messages", "assistant", `🖼 이미지 ${images.length}개를 갤러리로 추가했습니다. 위치/디자인은 요소를 선택해 다듬어 주세요.`);
+  state.chatHistory.push({ role: "assistant", content: `이미지 ${images.length}개 갤러리 추가` });
+  saveProject();
+  enableReviewBtn();
+  return true;
+}
+
 // AI 의도 분류 기반 라우팅 — 채팅 문장을 AI가 이해해 결정적으로 분기한다.
 async function routeByIntent(message, displayMessage, elInfo) {
   const _lastImg = state.uploadedImages.length ? state.uploadedImages[state.uploadedImages.length - 1] : null;
@@ -1204,6 +1235,13 @@ async function routeByIntent(message, displayMessage, elInfo) {
   }
 
   // ── 요소 미선택 ──
+  // 업로드 이미지가 있으면 → 코드로 갤러리 섹션 결정적 삽입 (AI 미사용, 확실히 적용)
+  if (state.uploadedImages.length && state.generatedHtml) {
+    console.log("[intent] images(no element) → deterministic gallery insert", state.uploadedImages.length);
+    insertImageGallery(state.uploadedImages.slice());
+    clearUploadedImages();
+    return;
+  }
   // 전체 재디자인/리팩토링 → 페이지 전체 편집
   if (_redesign || _wantsWhole) { console.log("[intent] redesign/whole → full edit"); await sendMessageV2(message, displayMessage, null, "edit"); return; }
 
