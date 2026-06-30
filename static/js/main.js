@@ -1720,6 +1720,7 @@ async function sendMessage() {
     if (imgCtx) displayMessage += imgCtx;
   }
 
+  const rawMessage = message; // 요소 설명 프리픽스 없는 사용자 원본 (결정적 파싱용)
   message = displayMessage;
   addMessage("messages", "user", displayMessage);
   state.isGenerating = true;
@@ -1734,10 +1735,10 @@ async function sendMessage() {
   try {
     if (isFirstGeneration) {
       // 최초 생성은 명확 — 바로 전체 생성
-      await sendMessageV2(message, displayMessage, null, "generate");
+      await sendMessageV2(rawMessage, displayMessage, null, "generate");
     } else {
-      // AI 의도 분류로 결정적 라우팅 (요소만/페이지일부 diff/전체/질문/새페이지)
-      await routeByIntent(message, displayMessage, elInfo);
+      // AI 의도 분류로 결정적 라우팅 — raw 메시지로 파싱(요소 설명 프리픽스 제외)
+      await routeByIntent(rawMessage, displayMessage, elInfo);
     }
   } finally {
     state.selectedElement = null;
